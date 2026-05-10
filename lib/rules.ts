@@ -2,9 +2,9 @@ export const rulesSections = [
   {
     title: "Format",
     items: [
-      "12 players compete in a double round-robin league.",
+      "Up to 20 players compete in a double round-robin league.",
       "Every player faces every other player twice, once home and once away.",
-      "The full season contains 132 fixtures across 22 matchdays."
+      "Fixture count scales with the squad: n × (n − 1) matches across 2 × (n − 1) matchdays."
     ]
   },
   {

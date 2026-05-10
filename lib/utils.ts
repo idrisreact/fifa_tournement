@@ -43,7 +43,15 @@ export const AVATAR_COLORS = [
   "#6ee7b7",
   "#f97316",
   "#a3e635",
-  "#e879f9"
+  "#e879f9",
+  "#facc15",
+  "#22d3ee",
+  "#fb7185",
+  "#a855f7",
+  "#34d399",
+  "#fbbf24",
+  "#60a5fa",
+  "#f43f5e"
 ];
 
 export function formatRecord(wins: number, draws: number, losses: number) {

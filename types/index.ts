@@ -14,6 +14,7 @@ export type Season = {
   id: string;
   name: string;
   status: SeasonStatus;
+  max_players: number;
   created_at?: string;
 };
 
