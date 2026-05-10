@@ -16,21 +16,21 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-white/10">
-      <table className="w-full min-w-[820px] border-collapse text-left">
+      <table className="w-full border-collapse text-left">
         <thead className="bg-white/[0.05]">
           <tr className="font-label text-sm uppercase tracking-wide text-muted">
-            <th className="px-4 py-3">Pos</th>
-            <th className="px-4 py-3">Player</th>
-            <th className="px-3 py-3 text-center">MP</th>
+            <th className="px-3 py-3 sm:px-4">Pos</th>
+            <th className="px-3 py-3 sm:px-4">Player</th>
+            <th className="hidden px-3 py-3 text-center sm:table-cell">MP</th>
             <th className="px-3 py-3 text-center">W</th>
-            <th className="px-3 py-3 text-center">D</th>
+            <th className="hidden px-3 py-3 text-center sm:table-cell">D</th>
             <th className="px-3 py-3 text-center">L</th>
-            <th className="px-3 py-3 text-center">GF</th>
-            <th className="px-3 py-3 text-center">GA</th>
+            <th className="hidden px-3 py-3 text-center sm:table-cell">GF</th>
+            <th className="hidden px-3 py-3 text-center sm:table-cell">GA</th>
             <th className="px-3 py-3 text-center">GD</th>
-            <th className="px-3 py-3 text-center">Bonus</th>
-            <th className="px-3 py-3 text-center">Form</th>
-            <th className="px-4 py-3 text-right">Pts</th>
+            <th className="hidden px-3 py-3 text-center sm:table-cell">Bonus</th>
+            <th className="hidden px-3 py-3 text-center md:table-cell">Form</th>
+            <th className="px-3 py-3 text-right sm:px-4">Pts</th>
           </tr>
         </thead>
         <tbody>
@@ -51,7 +51,7 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
                   position === standings.length && "bg-red-500/[0.04]"
                 )}
               >
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 sm:px-4">
                   <Badge
                     variant={
                       position === 1 ? "gold" : position === standings.length ? "red" : "default"
@@ -60,27 +60,27 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
                     {position}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 sm:px-4">
                   <div className="flex items-center gap-3">
                     <AvatarCircle player={player} size="sm" />
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 font-semibold text-white">
-                        {player.name}
-                        {position === 1 ? <Crown className="h-4 w-4 animate-glowPulse text-gold" /> : null}
+                        <span className="truncate">{player.name}</span>
+                        {position === 1 ? <Crown className="h-4 w-4 shrink-0 animate-glowPulse text-gold" /> : null}
                       </div>
-                      <div className="text-xs text-muted">@{player.psn_tag}</div>
+                      <div className="truncate text-xs text-muted">@{player.psn_tag}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-3 py-3 text-center">{standing.mp}</td>
+                <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.mp}</td>
                 <td className="px-3 py-3 text-center">{standing.wins}</td>
-                <td className="px-3 py-3 text-center">{standing.draws}</td>
+                <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.draws}</td>
                 <td className="px-3 py-3 text-center">{standing.losses}</td>
-                <td className="px-3 py-3 text-center">{standing.gf}</td>
-                <td className="px-3 py-3 text-center">{standing.ga}</td>
+                <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.gf}</td>
+                <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.ga}</td>
                 <td className="px-3 py-3 text-center">{goalDifference(standing)}</td>
-                <td className="px-3 py-3 text-center text-pitch">{standing.bonus_pts}</td>
-                <td className="px-3 py-3">
+                <td className="hidden px-3 py-3 text-center text-pitch sm:table-cell">{standing.bonus_pts}</td>
+                <td className="hidden px-3 py-3 md:table-cell">
                   <div className="flex justify-center gap-1">
                     {form.length ? (
                       form.map((result, resultIndex) => (
@@ -101,7 +101,7 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-display text-3xl leading-none text-white">
+                <td className="px-3 py-3 text-right font-display text-3xl leading-none text-white sm:px-4">
                   {standing.pts}
                 </td>
               </tr>

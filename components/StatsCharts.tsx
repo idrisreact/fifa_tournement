@@ -17,7 +17,7 @@ export function StatsCharts({ standings }: Props) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="h-80 rounded-lg border border-white/10 bg-panel p-4">
+      <div className="h-64 rounded-lg border border-white/10 bg-panel p-4 sm:h-80">
         <p className="mb-4 font-label text-sm uppercase tracking-wide text-muted">Goals For</p>
         <ResponsiveContainer width="100%" height="85%">
           <BarChart data={data}>
@@ -32,7 +32,7 @@ export function StatsCharts({ standings }: Props) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="h-80 rounded-lg border border-white/10 bg-panel p-4">
+      <div className="h-64 rounded-lg border border-white/10 bg-panel p-4 sm:h-80">
         <p className="mb-4 font-label text-sm uppercase tracking-wide text-muted">Total Points</p>
         <ResponsiveContainer width="100%" height="85%">
           <BarChart data={data}>

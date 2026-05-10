@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getCurrentUser, requireAdminUser, requireFixtureParticipant } from "@/lib/auth";
 import { generateRoundRobin } from "@/lib/fixtures";
 import { calculateStandings } from "@/lib/standings";
 import { AVATAR_COLORS } from "@/lib/utils";
@@ -46,19 +47,6 @@ export async function signInWithGoogle() {
   if (data.url) redirect(data.url);
 }
 
-export async function signInWithMagicLink(formData: FormData) {
-  const email = String(formData.get("email") ?? "");
-  const supabase = createSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase Auth is not configured.");
-
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${origin}/auth/callback` }
-  });
-  if (error) throw new Error(error.message);
-}
-
 export async function signOut() {
   const supabase = createSupabaseServerClient();
   await supabase?.auth.signOut();
@@ -66,6 +54,7 @@ export async function signOut() {
 }
 
 export async function addPlayerAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const name = String(formData.get("name") ?? "").trim();
   const psnTag = String(formData.get("psn_tag") ?? "").trim();
@@ -85,18 +74,81 @@ export async function addPlayerAction(formData: FormData) {
 }
 
 export async function removePlayerAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const playerId = String(formData.get("player_id") ?? "");
 
   const { count } = await supabase.from("fixtures").select("*", { count: "exact", head: true });
-  if ((count ?? 0) > 0) throw new Error("Players can only be removed before fixtures are generated.");
+  if ((count ?? 0) > 0) throw new Error("Players can only be removed before fixtures are generated. Use Withdraw instead.");
 
   const { error } = await supabase.from("players").delete().eq("id", playerId);
   if (error) throw new Error(error.message);
   refreshApp();
 }
 
+export async function withdrawPlayerAction(formData: FormData) {
+  await requireAdminUser();
+  const supabase = requireAdminClient();
+  const playerId = String(formData.get("player_id") ?? "");
+
+  const { error: playerError } = await supabase
+    .from("players")
+    .update({ is_active: false })
+    .eq("id", playerId);
+  if (playerError) throw new Error(playerError.message);
+
+  const { data: voidedFixtures, error: voidError } = await supabase
+    .from("fixtures")
+    .update({
+      voided: true,
+      home_submitted_home_score: null,
+      home_submitted_away_score: null,
+      home_submitted_at: null,
+      away_submitted_home_score: null,
+      away_submitted_away_score: null,
+      away_submitted_at: null,
+      dispute_open: false,
+      dispute_reason: null
+    })
+    .eq("played", false)
+    .or(`home_player_id.eq.${playerId},away_player_id.eq.${playerId}`)
+    .select("season_id");
+  if (voidError) throw new Error(voidError.message);
+
+  const seasonIds = Array.from(new Set((voidedFixtures ?? []).map((row) => row.season_id)));
+  await Promise.all(seasonIds.map((id) => recalculateStandings(id)));
+
+  refreshApp();
+}
+
+export async function reinstatePlayerAction(formData: FormData) {
+  await requireAdminUser();
+  const supabase = requireAdminClient();
+  const playerId = String(formData.get("player_id") ?? "");
+
+  const { error: playerError } = await supabase
+    .from("players")
+    .update({ is_active: true })
+    .eq("id", playerId);
+  if (playerError) throw new Error(playerError.message);
+
+  const { data: restored, error: restoreError } = await supabase
+    .from("fixtures")
+    .update({ voided: false })
+    .eq("voided", true)
+    .eq("played", false)
+    .or(`home_player_id.eq.${playerId},away_player_id.eq.${playerId}`)
+    .select("season_id");
+  if (restoreError) throw new Error(restoreError.message);
+
+  const seasonIds = Array.from(new Set((restored ?? []).map((row) => row.season_id)));
+  await Promise.all(seasonIds.map((id) => recalculateStandings(id)));
+
+  refreshApp();
+}
+
 export async function generateFixturesAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const seasonId = String(formData.get("season_id") ?? "");
 
@@ -119,6 +171,7 @@ export async function generateFixturesAction(formData: FormData) {
 }
 
 export async function logResultAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const parsed = scoreSchema.parse({
     fixtureId: formData.get("fixture_id"),
@@ -175,6 +228,7 @@ export async function logResultAction(formData: FormData) {
 }
 
 export async function resetFixtureAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const fixtureId = String(formData.get("fixture_id") ?? "");
 
@@ -194,7 +248,15 @@ export async function resetFixtureAction(formData: FormData) {
       rage_quit_player_id: null,
       comeback_win: false,
       result_screenshot_url: null,
-      played_at: null
+      played_at: null,
+      home_submitted_home_score: null,
+      home_submitted_away_score: null,
+      home_submitted_at: null,
+      away_submitted_home_score: null,
+      away_submitted_away_score: null,
+      away_submitted_at: null,
+      dispute_open: false,
+      dispute_reason: null
     })
     .eq("id", fixtureId);
   if (error) throw new Error(error.message);
@@ -203,7 +265,35 @@ export async function resetFixtureAction(formData: FormData) {
   refreshApp();
 }
 
+export async function resetAllFixturesAction(formData: FormData) {
+  await requireAdminUser();
+  const supabase = requireAdminClient();
+  const seasonId = String(formData.get("season_id") ?? "");
+  if (!seasonId) throw new Error("Missing season id.");
+
+  const { error: fixturesError } = await supabase
+    .from("fixtures")
+    .delete()
+    .eq("season_id", seasonId);
+  if (fixturesError) throw new Error(fixturesError.message);
+
+  const { error: standingsError } = await supabase
+    .from("standings")
+    .delete()
+    .eq("season_id", seasonId);
+  if (standingsError) throw new Error(standingsError.message);
+
+  const { error: statusError } = await supabase
+    .from("seasons")
+    .update({ status: "setup" })
+    .eq("id", seasonId);
+  if (statusError) throw new Error(statusError.message);
+
+  refreshApp();
+}
+
 export async function updateSeasonStatusAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const seasonId = String(formData.get("season_id") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -215,6 +305,7 @@ export async function updateSeasonStatusAction(formData: FormData) {
 }
 
 export async function manualPointsAction(formData: FormData) {
+  await requireAdminUser();
   const supabase = requireAdminClient();
   const seasonId = String(formData.get("season_id") ?? "");
   const playerId = String(formData.get("player_id") ?? "");
@@ -237,6 +328,181 @@ export async function manualPointsAction(formData: FormData) {
     })
     .eq("season_id", seasonId)
     .eq("player_id", playerId);
+  if (error) throw new Error(error.message);
+  refreshApp();
+}
+
+const submissionSchema = z.object({
+  fixtureId: z.string().uuid(),
+  homeScore: z.coerce.number().int().min(0).max(99),
+  awayScore: z.coerce.number().int().min(0).max(99)
+});
+
+export async function claimPlayerAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Sign in to claim a squad name.");
+
+  const playerId = String(formData.get("player_id") ?? "");
+  if (!playerId) throw new Error("Pick a squad name.");
+
+  const supabase = requireAdminClient();
+
+  const { data: existingForUser } = await supabase
+    .from("players")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  if (existingForUser) throw new Error("You are already linked to a squad name.");
+
+  const { data: updated, error } = await supabase
+    .from("players")
+    .update({ auth_user_id: user.id })
+    .eq("id", playerId)
+    .is("auth_user_id", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("That squad name is already taken.");
+
+  refreshApp();
+}
+
+export async function selfRegisterPlayerAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Sign in to register.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const psnTag = String(formData.get("psn_tag") ?? "").trim();
+  if (!name || !psnTag) throw new Error("Name and PSN tag are required.");
+
+  const supabase = requireAdminClient();
+
+  const { data: existingForUser } = await supabase
+    .from("players")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  if (existingForUser) throw new Error("You are already linked to a squad name.");
+
+  const { count: fixtureCount } = await supabase
+    .from("fixtures")
+    .select("*", { count: "exact", head: true });
+  if ((fixtureCount ?? 0) > 0) {
+    throw new Error("Fixtures have already been generated. Ask the admin to add you.");
+  }
+
+  const { count: playerCount } = await supabase
+    .from("players")
+    .select("*", { count: "exact", head: true });
+  if ((playerCount ?? 0) >= 12) throw new Error("The squad is already full.");
+
+  const avatarColor = AVATAR_COLORS[playerCount ?? 0] ?? AVATAR_COLORS[0];
+
+  const { error } = await supabase
+    .from("players")
+    .insert({ name, psn_tag: psnTag, avatar_color: avatarColor, auth_user_id: user.id });
+  if (error) throw new Error(error.message);
+
+  refreshApp();
+}
+
+export async function releasePlayerLinkAction(formData: FormData) {
+  await requireAdminUser();
+  const playerId = String(formData.get("player_id") ?? "");
+  const supabase = requireAdminClient();
+  const { error } = await supabase
+    .from("players")
+    .update({ auth_user_id: null })
+    .eq("id", playerId);
+  if (error) throw new Error(error.message);
+  refreshApp();
+}
+
+export async function submitResultAction(formData: FormData) {
+  const parsed = submissionSchema.parse({
+    fixtureId: formData.get("fixture_id"),
+    homeScore: formData.get("home_score"),
+    awayScore: formData.get("away_score")
+  });
+
+  const { role, fixture } = await requireFixtureParticipant(parsed.fixtureId);
+  const supabase = requireAdminClient();
+
+  const { data: current, error: fetchError } = await supabase
+    .from("fixtures")
+    .select("*")
+    .eq("id", fixture.id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+  if (current.played) throw new Error("This fixture is already final.");
+  if (current.voided) throw new Error("This fixture is voided.");
+  if (current.dispute_open) throw new Error("This fixture is disputed. Wait for an admin to resolve it.");
+
+  const sidePrefix = role === "home" ? "home" : "away";
+  const otherPrefix = role === "home" ? "away" : "home";
+
+  const alreadySubmittedAt = current[`${sidePrefix}_submitted_at`];
+  if (alreadySubmittedAt) {
+    throw new Error("You have already submitted a score for this fixture.");
+  }
+
+  const otherHome = current[`${otherPrefix}_submitted_home_score`];
+  const otherAway = current[`${otherPrefix}_submitted_away_score`];
+  const otherSubmittedAt = current[`${otherPrefix}_submitted_at`];
+
+  const updatePayload: Record<string, unknown> = {
+    [`${sidePrefix}_submitted_home_score`]: parsed.homeScore,
+    [`${sidePrefix}_submitted_away_score`]: parsed.awayScore,
+    [`${sidePrefix}_submitted_at`]: new Date().toISOString()
+  };
+
+  if (otherSubmittedAt !== null && otherSubmittedAt !== undefined) {
+    const matches = otherHome === parsed.homeScore && otherAway === parsed.awayScore;
+    if (matches) {
+      updatePayload.home_score = parsed.homeScore;
+      updatePayload.away_score = parsed.awayScore;
+      updatePayload.played = true;
+      updatePayload.played_at = new Date().toISOString();
+      updatePayload.dispute_open = false;
+      updatePayload.dispute_reason = null;
+    } else {
+      updatePayload.dispute_open = true;
+      updatePayload.dispute_reason = `Submissions disagree: home claims ${
+        role === "home" ? `${parsed.homeScore}-${parsed.awayScore}` : `${otherHome}-${otherAway}`
+      }, away claims ${
+        role === "away" ? `${parsed.homeScore}-${parsed.awayScore}` : `${otherHome}-${otherAway}`
+      }.`;
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("fixtures")
+    .update(updatePayload)
+    .eq("id", fixture.id);
+  if (updateError) throw new Error(updateError.message);
+
+  if (updatePayload.played) {
+    await recalculateStandings(fixture.season_id);
+  }
+  refreshApp();
+}
+
+export async function clearSubmissionsAction(formData: FormData) {
+  await requireAdminUser();
+  const fixtureId = String(formData.get("fixture_id") ?? "");
+  const supabase = requireAdminClient();
+  const { error } = await supabase
+    .from("fixtures")
+    .update({
+      home_submitted_home_score: null,
+      home_submitted_away_score: null,
+      home_submitted_at: null,
+      away_submitted_home_score: null,
+      away_submitted_away_score: null,
+      away_submitted_at: null,
+      dispute_open: false,
+      dispute_reason: null
+    })
+    .eq("id", fixtureId);
   if (error) throw new Error(error.message);
   refreshApp();
 }

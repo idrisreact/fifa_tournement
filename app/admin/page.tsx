@@ -1,54 +1,61 @@
-import { Lock, LogOut, RotateCcw, Save, Shield, Trophy } from "lucide-react";
+import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Shield, Trophy } from "lucide-react";
 import {
+  clearSubmissionsAction,
   logResultAction,
   manualPointsAction,
+  releasePlayerLinkAction,
   resetFixtureAction,
   signInWithGoogle,
-  signInWithMagicLink,
   signOut,
   updateSeasonStatusAction
 } from "@/app/actions";
+import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
-import { hasSupabaseEnv } from "@/lib/supabase";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function AdminPage() {
-  const { season, players, fixtures, standings, usingDemoData } = await getTournamentData();
-  const supabase = createSupabaseServerClient();
-  const { data } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const isAdmin = !hasSupabaseEnv() || !adminEmail || data.user?.email === adminEmail;
+  const [{ season, players, fixtures, standings, usingDemoData }, isAdmin, currentUser] =
+    await Promise.all([getTournamentData(), isAdminUser(), getCurrentUser()]);
 
   if (!isAdmin) {
     return (
       <div>
         <PageHeader
-          eyebrow="Protected route"
-          title="Admin"
-          description="Sign in with the designated admin account to manage official results."
+          eyebrow={currentUser ? "Signed in" : "Sign in"}
+          title={currentUser ? "Not authorized" : "Sign in"}
+          description={
+            currentUser
+              ? "You're signed in, but this account does not have admin access. Players: head to Squad to claim your name."
+              : "Sign in to claim your squad name and submit your match results. Only the admin account unlocks tournament management."
+          }
         />
         <Card className="mx-auto max-w-xl">
           <CardHeader>
-            <CardTitle>Admin Sign In</CardTitle>
+            <CardTitle>{currentUser ? "Account" : "Sign In"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form action={signInWithMagicLink} className="space-y-3">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="admin@example.com" required />
-              <Button type="submit" className="w-full">
-                <Lock className="h-4 w-4" />
-                Send Magic Link
-              </Button>
-            </form>
-            <form action={signInWithGoogle}>
-              <Button type="submit" variant="secondary" className="w-full">
-                Sign in with Google
-              </Button>
-            </form>
+            {currentUser ? (
+              <>
+                <p className="text-sm text-muted">
+                  Signed in as <span className="text-white">{currentUser.email}</span>.
+                </p>
+                <form action={signOut}>
+                  <Button type="submit" variant="secondary" className="w-full">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <form action={signInWithGoogle}>
+                <Button type="submit" className="w-full">
+                  Sign in with Google
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -56,6 +63,8 @@ export default async function AdminPage() {
   }
 
   const playedFixtures = fixtures.filter((fixture) => fixture.played);
+  const disputedFixtures = fixtures.filter((fixture) => fixture.dispute_open);
+  const linkedPlayers = players.filter((player) => player.auth_user_id);
 
   return (
     <div className="space-y-6">
@@ -64,7 +73,7 @@ export default async function AdminPage() {
         title="Admin"
         description="Override results, reset fixtures, manage point adjustments, and change season status."
         action={
-          data.user ? (
+          currentUser ? (
             <form action={signOut}>
               <Button type="submit" variant="secondary">
                 <LogOut className="h-4 w-4" />
@@ -138,6 +147,82 @@ export default async function AdminPage() {
         </Card>
       </div>
 
+      {disputedFixtures.length ? (
+        <Card className="border-red-400/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-300" />
+              Disputed Submissions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {disputedFixtures.map((fixture) => (
+              <div
+                key={fixture.id}
+                className="rounded-lg border border-red-400/20 bg-red-500/[0.06] p-4"
+              >
+                <p className="font-label text-lg uppercase text-white">
+                  MD {fixture.matchday} Leg {fixture.leg}: {fixture.home_player?.name} vs {fixture.away_player?.name}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-md bg-white/[0.04] p-2">
+                    <p className="text-xs uppercase text-muted">{fixture.home_player?.name} submitted</p>
+                    <p className="font-display text-2xl text-white">
+                      {fixture.home_submitted_home_score} - {fixture.home_submitted_away_score}
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-white/[0.04] p-2">
+                    <p className="text-xs uppercase text-muted">{fixture.away_player?.name} submitted</p>
+                    <p className="font-display text-2xl text-white">
+                      {fixture.away_submitted_home_score} - {fixture.away_submitted_away_score}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <form action={clearSubmissionsAction}>
+                    <input type="hidden" name="fixture_id" value={fixture.id} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      <RotateCcw className="h-4 w-4" />
+                      Clear & let players resubmit
+                    </Button>
+                  </form>
+                  <p className="text-xs text-muted">
+                    Or scroll to <strong>Override Result</strong> below to set the final score yourself.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {linkedPlayers.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Linked Accounts</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2">
+            {linkedPlayers.map((player) => (
+              <form
+                key={player.id}
+                action={releasePlayerLinkAction}
+                className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-[#0b1420] p-3"
+              >
+                <input type="hidden" name="player_id" value={player.id} />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-white">{player.name}</p>
+                  <p className="truncate text-xs text-muted">@{player.psn_tag}</p>
+                </div>
+                <Button type="submit" variant="ghost" size="sm">
+                  <Link2Off className="h-4 w-4" />
+                  Unlink
+                </Button>
+              </form>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Override Result</CardTitle>
@@ -157,7 +242,7 @@ export default async function AdminPage() {
                   </p>
                   <span className="text-xs text-muted">Leg {fixture.leg}</span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div>
                     <Label>Home</Label>
                     <Input name="home_score" type="number" min="0" defaultValue={fixture.home_score ?? 0} disabled={usingDemoData} />
@@ -201,7 +286,7 @@ export default async function AdminPage() {
         <CardHeader>
           <CardTitle>Reset Played Fixtures</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {playedFixtures.length ? (
             playedFixtures.map((fixture) => (
               <form

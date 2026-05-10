@@ -11,15 +11,17 @@ type Props = {
   players: Player[];
   fixtures: Fixture[];
   usingDemoData?: boolean;
+  isAdmin?: boolean;
+  currentPlayerId?: string | null;
 };
 
-export function FixturesClient({ players, fixtures, usingDemoData }: Props) {
+export function FixturesClient({ players, fixtures, usingDemoData, isAdmin, currentPlayerId }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const filtered = useMemo(() => {
     return fixtures.filter((fixture) => {
       if (filter === "played") return fixture.played;
-      if (filter === "upcoming") return !fixture.played;
+      if (filter === "upcoming") return !fixture.played && !fixture.voided;
       return true;
     });
   }, [fixtures, filter]);
@@ -53,7 +55,14 @@ export function FixturesClient({ players, fixtures, usingDemoData }: Props) {
           </h2>
           <div className="grid gap-3 xl:grid-cols-2">
             {matchdayFixtures.map((fixture) => (
-              <FixtureCard key={fixture.id} fixture={fixture} players={players} usingDemoData={usingDemoData} />
+              <FixtureCard
+                key={fixture.id}
+                fixture={fixture}
+                players={players}
+                usingDemoData={usingDemoData}
+                isAdmin={isAdmin}
+                currentPlayerId={currentPlayerId}
+              />
             ))}
           </div>
         </section>

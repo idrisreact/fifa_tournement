@@ -7,3 +7,5 @@ dist
 coverage
 tsconfig.tsbuildinfo
 npm-debug.log*
+.claude
+/CLAUDE.md

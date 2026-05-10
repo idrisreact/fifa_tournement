@@ -4,7 +4,11 @@ import { goalDifference } from "@/lib/utils";
 
 export function calculateStandings(seasonId: string, players: Player[], fixtures: Fixture[]): Standing[] {
   const playedFixtures = fixtures.filter(
-    (fixture) => fixture.played && fixture.home_score !== null && fixture.away_score !== null
+    (fixture) =>
+      fixture.played &&
+      !fixture.voided &&
+      fixture.home_score !== null &&
+      fixture.away_score !== null
   );
 
   const rows = new Map<string, Standing>();
