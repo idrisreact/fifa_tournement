@@ -33,6 +33,40 @@ function refreshApp() {
   );
 }
 
+async function recordFixtureUpload(
+  supabase: ReturnType<typeof requireAdminClient>,
+  args: {
+    file: File;
+    fixtureId: string;
+    seasonId: string;
+    playerId: string;
+    side: "home" | "away";
+  }
+) {
+  const extension = args.file.name.split(".").pop() ?? "png";
+  const path = `${args.seasonId}/${args.fixtureId}-${args.side}-${Date.now()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from("screenshots")
+    .upload(path, args.file, { contentType: args.file.type, upsert: true });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data } = supabase.storage.from("screenshots").getPublicUrl(path);
+
+  const { error: insertError } = await supabase.from("fixture_uploads").upsert(
+    {
+      fixture_id: args.fixtureId,
+      player_id: args.playerId,
+      side: args.side,
+      storage_path: path,
+      public_url: data.publicUrl,
+      content_type: args.file.type || null,
+      size_bytes: args.file.size
+    },
+    { onConflict: "fixture_id,player_id,side" }
+  );
+  if (insertError) throw new Error(insertError.message);
+}
+
 export async function signInWithGoogle() {
   const supabase = createSupabaseServerClient();
   if (!supabase) throw new Error("Supabase Auth is not configured.");
@@ -261,6 +295,12 @@ export async function resetFixtureAction(formData: FormData) {
     .eq("id", fixtureId);
   if (error) throw new Error(error.message);
 
+  const { error: uploadsError } = await supabase
+    .from("fixture_uploads")
+    .delete()
+    .eq("fixture_id", fixtureId);
+  if (uploadsError) throw new Error(uploadsError.message);
+
   await recalculateStandings(fixture.season_id);
   refreshApp();
 }
@@ -424,7 +464,7 @@ export async function submitResultAction(formData: FormData) {
     awayScore: formData.get("away_score")
   });
 
-  const { role, fixture } = await requireFixtureParticipant(parsed.fixtureId);
+  const { role, player, fixture } = await requireFixtureParticipant(parsed.fixtureId);
   const supabase = requireAdminClient();
 
   const { data: current, error: fetchError } = await supabase
@@ -443,6 +483,17 @@ export async function submitResultAction(formData: FormData) {
   const alreadySubmittedAt = current[`${sidePrefix}_submitted_at`];
   if (alreadySubmittedAt) {
     throw new Error("You have already submitted a score for this fixture.");
+  }
+
+  const screenshot = formData.get("screenshot");
+  if (screenshot instanceof File && screenshot.size > 0) {
+    await recordFixtureUpload(supabase, {
+      file: screenshot,
+      fixtureId: fixture.id,
+      seasonId: fixture.season_id,
+      playerId: player.id,
+      side: role
+    });
   }
 
   const otherHome = current[`${otherPrefix}_submitted_home_score`];
@@ -504,6 +555,13 @@ export async function clearSubmissionsAction(formData: FormData) {
     })
     .eq("id", fixtureId);
   if (error) throw new Error(error.message);
+
+  const { error: uploadsError } = await supabase
+    .from("fixture_uploads")
+    .delete()
+    .eq("fixture_id", fixtureId);
+  if (uploadsError) throw new Error(uploadsError.message);
+
   refreshApp();
 }
 

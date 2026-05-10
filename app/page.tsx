@@ -1,20 +1,22 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Table2, Users, BarChart3, ShieldCheck } from "lucide-react";
-import { getCurrentPlayer, isAdminUser } from "@/lib/auth";
+import { getCurrentPlayer, getCurrentUser, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
 import { sortStandings } from "@/lib/standings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FixtureCard } from "@/components/FixtureCard";
 import { MetricCard } from "@/components/MetricCard";
+import { SignInWithGoogleButton } from "@/components/SignInWithGoogleButton";
 import { StandingsTable } from "@/components/StandingsTable";
 import { StatusChip } from "@/components/StatusChip";
 
 export default async function DashboardPage() {
-  const [{ season, players, fixtures, standings, usingDemoData }, isAdmin, currentPlayer] = await Promise.all([
+  const [{ season, players, fixtures, standings, usingDemoData }, isAdmin, currentPlayer, currentUser] = await Promise.all([
     getTournamentData(),
     isAdminUser(),
-    getCurrentPlayer()
+    getCurrentPlayer(),
+    getCurrentUser()
   ]);
   const played = fixtures.filter((fixture) => fixture.played);
   const totalGoals = played.reduce(
@@ -66,6 +68,9 @@ export default async function DashboardPage() {
             <Button asChild variant="secondary">
               <Link href="/standings">League Table</Link>
             </Button>
+            {!currentUser && !usingDemoData ? (
+              <SignInWithGoogleButton variant="gold" />
+            ) : null}
           </div>
         </div>
       </section>

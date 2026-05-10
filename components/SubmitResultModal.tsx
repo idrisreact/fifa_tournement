@@ -57,6 +57,10 @@ export function SubmitResultModal({ fixture, players, children }: Props) {
                 <Input id={`submit-away-${fixture.id}`} name="away_score" type="number" min="0" required />
               </div>
             </div>
+            <div>
+              <Label htmlFor={`submit-screenshot-${fixture.id}`}>Screenshot (optional)</Label>
+              <Input id={`submit-screenshot-${fixture.id}`} name="screenshot" type="file" accept="image/*" />
+            </div>
             <Button type="submit" className="w-full">
               Submit My Score
             </Button>
