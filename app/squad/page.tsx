@@ -9,6 +9,7 @@ import { ClaimPlayerForm } from "@/components/ClaimPlayerForm";
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
 import { ResetFixturesButton } from "@/components/ResetFixturesButton";
+import { SignInWithGoogleButton } from "@/components/SignInWithGoogleButton";
 
 export default async function SquadPage() {
   const [{ season, players, fixtures, usingDemoData }, isAdmin, currentUser, currentPlayer] =
@@ -17,12 +18,13 @@ export default async function SquadPage() {
   const fixtureCount = fixtures.length;
   const canHardRemove = fixtureCount === 0;
   const canGenerate = season.status === "setup" && players.length >= 2 && fixtureCount === 0 && !usingDemoData;
-  const showClaimForm = !!currentUser && !currentPlayer && !isAdmin;
+  const showClaimForm = !!currentUser && !currentPlayer;
+  const showSignInCard = !currentUser && !usingDemoData;
   const unclaimedPlayers = players.filter((player) => !player.auth_user_id && player.is_active !== false);
   const squadFull = players.length >= 12;
   const fixturesGenerated = fixtureCount > 0;
   const canSelfRegister = !squadFull && !fixturesGenerated && !usingDemoData;
-  const showSidebar = isAdmin || showClaimForm;
+  const showSidebar = isAdmin || showClaimForm || showSignInCard;
 
   return (
     <div>
@@ -41,6 +43,19 @@ export default async function SquadPage() {
       <div className={showSidebar ? "grid gap-6 lg:grid-cols-[0.85fr_1.4fr]" : "space-y-6"}>
         {showSidebar ? (
           <div className="space-y-6">
+            {showSignInCard ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Join the Squad</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted">
+                    Sign in to claim your squad name or add yourself to the roster. Once linked, only you can submit your match results.
+                  </p>
+                  <SignInWithGoogleButton className="w-full [&>button]:w-full" />
+                </CardContent>
+              </Card>
+            ) : null}
             {showClaimForm ? (
               <ClaimPlayerForm
                 unclaimedPlayers={unclaimedPlayers}
