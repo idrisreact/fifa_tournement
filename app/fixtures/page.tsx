@@ -1,0 +1,18 @@
+import { getTournamentData } from "@/lib/data";
+import { FixturesClient } from "@/components/FixturesClient";
+import { PageHeader } from "@/components/PageHeader";
+
+export default async function FixturesPage() {
+  const { players, fixtures, usingDemoData } = await getTournamentData();
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Match schedule"
+        title="Fixtures"
+        description="Filter by status, jump into a matchday, and submit results with proof."
+      />
+      <FixturesClient players={players} fixtures={fixtures} usingDemoData={usingDemoData} />
+    </div>
+  );
+}
