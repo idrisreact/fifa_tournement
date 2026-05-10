@@ -18,8 +18,11 @@ create table if not exists seasons (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   status text default 'setup' check (status in ('setup', 'active', 'complete')),
+  max_players integer not null default 12 check (max_players between 2 and 20),
   created_at timestamptz default now()
 );
+
+alter table seasons add column if not exists max_players integer not null default 12;
 
 create table if not exists fixtures (
   id uuid primary key default gen_random_uuid(),

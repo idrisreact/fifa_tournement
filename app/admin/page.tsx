@@ -1,4 +1,4 @@
-import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Shield, Trophy } from "lucide-react";
+import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Shield, Trophy, Users } from "lucide-react";
 import {
   clearSubmissionsAction,
   logResultAction,
@@ -7,6 +7,7 @@ import {
   resetFixtureAction,
   signInWithGoogle,
   signOut,
+  updateSeasonMaxPlayersAction,
   updateSeasonStatusAction
 } from "@/app/actions";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
@@ -107,6 +108,40 @@ export default async function AdminPage() {
                 <Trophy className="h-4 w-4" />
                 Update
               </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Squad Size</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={updateSeasonMaxPlayersAction} className="space-y-3">
+              <input type="hidden" name="season_id" value={season.id} />
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div>
+                  <Label htmlFor="max_players">Max players (2-20)</Label>
+                  <Input
+                    id="max_players"
+                    name="max_players"
+                    type="number"
+                    min={Math.max(2, players.length)}
+                    max={20}
+                    defaultValue={season.max_players ?? 12}
+                    disabled={usingDemoData || fixtures.length > 0}
+                  />
+                </div>
+                <Button type="submit" disabled={usingDemoData || fixtures.length > 0}>
+                  <Users className="h-4 w-4" />
+                  Update
+                </Button>
+              </div>
+              <p className="text-xs text-muted">
+                {fixtures.length > 0
+                  ? "Fixtures have been generated. Reset fixtures before changing squad size."
+                  : `Currently ${players.length} of ${season.max_players ?? 12} slots filled. Generating ${season.max_players ?? 12} players produces ${(season.max_players ?? 12) * ((season.max_players ?? 12) - 1)} fixtures.`}
+              </p>
             </form>
           </CardContent>
         </Card>

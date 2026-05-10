@@ -5,7 +5,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase";
 const unconfiguredSeason: Season = {
   id: "unconfigured",
   name: "FC25 Group Chat League",
-  status: "setup"
+  status: "setup",
+  max_players: 12
 };
 
 export async function getTournamentData(): Promise<TournamentData> {

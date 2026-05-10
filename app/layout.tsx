@@ -5,7 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "FC25 Group Chat Tournament",
-  description: "A premium dashboard for managing a 12-player EA Sports FC 25 league."
+  description: "A premium dashboard for managing your EA Sports FC 25 group-chat league."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

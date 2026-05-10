@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Table2, Users, BarChart3, ShieldCheck } from "lucide-react";
 import { getCurrentPlayer, getCurrentUser, isAdminUser } from "@/lib/auth";
@@ -40,7 +41,17 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-lg border border-white/10 bg-[#09131e] p-6 shadow-2xl sm:p-8">
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(120deg,transparent,rgba(0,200,83,0.12))] lg:block" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block">
+          <Image
+            src="/idris_boss.png"
+            alt="Idris boss"
+            fill
+            priority
+            sizes="(min-width: 1024px) 50vw, 0px"
+            className="object-cover object-right opacity-90 [mask-image:linear-gradient(to_left,black_55%,transparent)]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(0,200,83,0.12))]" />
+        </div>
         <div className="relative max-w-3xl">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <StatusChip status={season.status} />
@@ -56,7 +67,7 @@ export default async function DashboardPage() {
           <p className="mt-4 max-w-2xl text-lg text-muted">
             {usingDemoData
               ? "Connect Supabase to start taking real signups, generating fixtures, and logging results."
-              : `${played.length} of ${fixtures.length || 132} matches played. Every result, bonus point, and head-to-head swing tracked live.`}
+              : `${played.length} of ${fixtures.length || season.max_players * (season.max_players - 1)} matches played. Every result, bonus point, and head-to-head swing tracked live.`}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>

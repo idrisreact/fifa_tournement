@@ -21,7 +21,8 @@ export default async function SquadPage() {
   const showClaimForm = !!currentUser && !currentPlayer;
   const showSignInCard = !currentUser && !usingDemoData;
   const unclaimedPlayers = players.filter((player) => !player.auth_user_id && player.is_active !== false);
-  const squadFull = players.length >= 12;
+  const maxPlayers = season.max_players ?? 12;
+  const squadFull = players.length >= maxPlayers;
   const fixturesGenerated = fixtureCount > 0;
   const canSelfRegister = !squadFull && !fixturesGenerated && !usingDemoData;
   const showSidebar = isAdmin || showClaimForm || showSignInCard;
@@ -35,7 +36,7 @@ export default async function SquadPage() {
         action={
           <div className="rounded-lg border border-white/10 bg-panel px-4 py-3 text-right">
             <p className="font-label text-sm uppercase tracking-wide text-muted">Players</p>
-            <p className="font-display text-4xl leading-none text-white">{players.length} / 12</p>
+            <p className="font-display text-4xl leading-none text-white">{players.length} / {maxPlayers}</p>
           </div>
         }
       />
@@ -74,13 +75,13 @@ export default async function SquadPage() {
                     <form action={addPlayerAction} className="space-y-4">
                       <div>
                         <Label htmlFor="name">Name</Label>
-                        <Input id="name" name="name" placeholder="Marcus" required disabled={players.length >= 12 || usingDemoData} />
+                        <Input id="name" name="name" placeholder="Marcus" required disabled={squadFull || usingDemoData} />
                       </div>
                       <div>
                         <Label htmlFor="psn_tag">PSN Tag</Label>
-                        <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc25" required disabled={players.length >= 12 || usingDemoData} />
+                        <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc25" required disabled={squadFull || usingDemoData} />
                       </div>
-                      <Button type="submit" className="w-full" disabled={players.length >= 12 || usingDemoData}>
+                      <Button type="submit" className="w-full" disabled={squadFull || usingDemoData}>
                         <Plus className="h-4 w-4" />
                         Add Player
                       </Button>

@@ -95,8 +95,17 @@ export async function addPlayerAction(formData: FormData) {
 
   if (!name || !psnTag) throw new Error("Name and PSN tag are required.");
 
-  const { count } = await supabase.from("players").select("*", { count: "exact", head: true });
-  if ((count ?? 0) >= 12) throw new Error("The squad is already full.");
+  const [{ count }, { data: season }] = await Promise.all([
+    supabase.from("players").select("*", { count: "exact", head: true }),
+    supabase
+      .from("seasons")
+      .select("max_players")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
+  const cap = season?.max_players ?? 12;
+  if ((count ?? 0) >= cap) throw new Error(`The squad is already full (${cap} players).`);
 
   const avatarColor = AVATAR_COLORS[count ?? 0] ?? AVATAR_COLORS[0];
   const { error } = await supabase
@@ -344,6 +353,46 @@ export async function updateSeasonStatusAction(formData: FormData) {
   refreshApp();
 }
 
+export async function updateSeasonMaxPlayersAction(formData: FormData) {
+  await requireAdminUser();
+  const supabase = requireAdminClient();
+  const seasonId = String(formData.get("season_id") ?? "");
+  const maxPlayers = Number(formData.get("max_players") ?? 0);
+
+  if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 20) {
+    throw new Error("Squad size must be a whole number between 2 and 20.");
+  }
+
+  const [{ count: playerCount }, { count: fixtureCount }] = await Promise.all([
+    supabase
+      .from("players")
+      .select("*", { count: "exact", head: true }),
+    supabase
+      .from("fixtures")
+      .select("*", { count: "exact", head: true })
+      .eq("season_id", seasonId)
+  ]);
+
+  if ((playerCount ?? 0) > maxPlayers) {
+    throw new Error(
+      `Cannot shrink below current squad of ${playerCount}. Remove players first.`
+    );
+  }
+
+  if ((fixtureCount ?? 0) > 0) {
+    throw new Error(
+      "Fixtures have already been generated. Adjust the squad before generating fixtures."
+    );
+  }
+
+  const { error } = await supabase
+    .from("seasons")
+    .update({ max_players: maxPlayers })
+    .eq("id", seasonId);
+  if (error) throw new Error(error.message);
+  refreshApp();
+}
+
 export async function manualPointsAction(formData: FormData) {
   await requireAdminUser();
   const supabase = requireAdminClient();
@@ -430,10 +479,17 @@ export async function selfRegisterPlayerAction(formData: FormData) {
     throw new Error("Fixtures have already been generated. Ask the admin to add you.");
   }
 
-  const { count: playerCount } = await supabase
-    .from("players")
-    .select("*", { count: "exact", head: true });
-  if ((playerCount ?? 0) >= 12) throw new Error("The squad is already full.");
+  const [{ count: playerCount }, { data: season }] = await Promise.all([
+    supabase.from("players").select("*", { count: "exact", head: true }),
+    supabase
+      .from("seasons")
+      .select("max_players")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
+  const cap = season?.max_players ?? 12;
+  if ((playerCount ?? 0) >= cap) throw new Error(`The squad is already full (${cap} players).`);
 
   const avatarColor = AVATAR_COLORS[playerCount ?? 0] ?? AVATAR_COLORS[0];
 
