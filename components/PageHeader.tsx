@@ -14,7 +14,7 @@ export function PageHeader({ eyebrow, title, description, action }: Props) {
         {eyebrow ? (
           <p className="font-label text-sm uppercase tracking-wide text-pitch">{eyebrow}</p>
         ) : null}
-        <h1 className="font-display text-5xl uppercase leading-none text-white sm:text-6xl">{title}</h1>
+        <h1 className="font-display text-4xl uppercase leading-none text-white sm:text-5xl lg:text-6xl">{title}</h1>
         {description ? <p className="mt-2 max-w-2xl text-muted">{description}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

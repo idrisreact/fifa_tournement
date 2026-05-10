@@ -1,17 +1,28 @@
 import { Plus, Shuffle } from "lucide-react";
 import { addPlayerAction, generateFixturesAction } from "@/app/actions";
+import { getCurrentPlayer, getCurrentUser, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
+import { ClaimPlayerForm } from "@/components/ClaimPlayerForm";
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerCard } from "@/components/PlayerCard";
+import { ResetFixturesButton } from "@/components/ResetFixturesButton";
 
 export default async function SquadPage() {
-  const { season, players, fixtures, usingDemoData } = await getTournamentData();
+  const [{ season, players, fixtures, usingDemoData }, isAdmin, currentUser, currentPlayer] =
+    await Promise.all([getTournamentData(), isAdminUser(), getCurrentUser(), getCurrentPlayer()]);
+
   const fixtureCount = fixtures.length;
-  const canRemove = fixtureCount === 0;
+  const canHardRemove = fixtureCount === 0;
   const canGenerate = season.status === "setup" && players.length >= 2 && fixtureCount === 0 && !usingDemoData;
+  const showClaimForm = !!currentUser && !currentPlayer && !isAdmin;
+  const unclaimedPlayers = players.filter((player) => !player.auth_user_id && player.is_active !== false);
+  const squadFull = players.length >= 12;
+  const fixturesGenerated = fixtureCount > 0;
+  const canSelfRegister = !squadFull && !fixturesGenerated && !usingDemoData;
+  const showSidebar = isAdmin || showClaimForm;
 
   return (
     <div>
@@ -27,54 +38,77 @@ export default async function SquadPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.4fr]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add Player</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form action={addPlayerAction} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" name="name" placeholder="Marcus" required disabled={players.length >= 12 || usingDemoData} />
-                </div>
-                <div>
-                  <Label htmlFor="psn_tag">PSN Tag</Label>
-                  <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc25" required disabled={players.length >= 12 || usingDemoData} />
-                </div>
-                <Button type="submit" className="w-full" disabled={players.length >= 12 || usingDemoData}>
-                  <Plus className="h-4 w-4" />
-                  Add Player
-                </Button>
-              </form>
-              {usingDemoData ? (
-                <p className="mt-3 text-sm text-gold">Connect Supabase env vars to manage the real squad.</p>
-              ) : null}
-            </CardContent>
-          </Card>
+      <div className={showSidebar ? "grid gap-6 lg:grid-cols-[0.85fr_1.4fr]" : "space-y-6"}>
+        {showSidebar ? (
+          <div className="space-y-6">
+            {showClaimForm ? (
+              <ClaimPlayerForm
+                unclaimedPlayers={unclaimedPlayers}
+                canSelfRegister={canSelfRegister}
+                fixturesGenerated={fixturesGenerated}
+                squadFull={squadFull}
+              />
+            ) : null}
+            {isAdmin ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Add Player</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form action={addPlayerAction} className="space-y-4">
+                      <div>
+                        <Label htmlFor="name">Name</Label>
+                        <Input id="name" name="name" placeholder="Marcus" required disabled={players.length >= 12 || usingDemoData} />
+                      </div>
+                      <div>
+                        <Label htmlFor="psn_tag">PSN Tag</Label>
+                        <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc25" required disabled={players.length >= 12 || usingDemoData} />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={players.length >= 12 || usingDemoData}>
+                        <Plus className="h-4 w-4" />
+                        Add Player
+                      </Button>
+                    </form>
+                    {usingDemoData ? (
+                      <p className="mt-3 text-sm text-gold">Connect Supabase env vars to manage the real squad.</p>
+                    ) : null}
+                  </CardContent>
+                </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Fixtures</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4 text-sm text-muted">
-                Generates the Berger double round-robin: {players.length ? players.length * (players.length - 1) : 0} matches.
-              </p>
-              <form action={generateFixturesAction}>
-                <input type="hidden" name="season_id" value={season.id} />
-                <Button type="submit" variant="gold" className="w-full" disabled={!canGenerate}>
-                  <Shuffle className="h-4 w-4" />
-                  Generate Fixtures
-                </Button>
-              </form>
-              {fixtureCount > 0 ? (
-                <p className="mt-3 text-sm text-muted">{fixtureCount} fixtures already generated.</p>
-              ) : null}
-            </CardContent>
-          </Card>
-        </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Fixtures</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4 text-sm text-muted">
+                      Generates the Berger double round-robin: {players.length ? players.length * (players.length - 1) : 0} matches.
+                    </p>
+                    <form action={generateFixturesAction}>
+                      <input type="hidden" name="season_id" value={season.id} />
+                      <Button type="submit" variant="gold" className="w-full" disabled={!canGenerate}>
+                        <Shuffle className="h-4 w-4" />
+                        Generate Fixtures
+                      </Button>
+                    </form>
+                    {fixtureCount > 0 ? (
+                      <div className="mt-3 space-y-3">
+                        <p className="text-sm text-muted">
+                          {fixtureCount} fixtures already generated. Reset them to add new players or regenerate the schedule.
+                        </p>
+                        <ResetFixturesButton
+                          seasonId={season.id}
+                          fixtureCount={fixtureCount}
+                          disabled={usingDemoData}
+                        />
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {players.map((player, index) => (
@@ -82,8 +116,10 @@ export default async function SquadPage() {
               key={player.id}
               player={player}
               index={index}
-              canRemove={canRemove}
+              canHardRemove={canHardRemove}
               usingDemoData={usingDemoData}
+              isAdmin={isAdmin}
+              isCurrentPlayer={player.id === currentPlayer?.id}
             />
           ))}
         </section>

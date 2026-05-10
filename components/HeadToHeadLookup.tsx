@@ -61,26 +61,26 @@ export function HeadToHeadLookup({ players, fixtures }: Props) {
       </div>
 
       {summary ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-md bg-white/[0.05] p-3">
             <p className="font-label text-xs uppercase text-muted">Aggregate</p>
-            <p className="font-display text-4xl text-white">
+            <p className="font-display text-3xl text-white sm:text-4xl">
               {summary.aggregateA} - {summary.aggregateB}
             </p>
           </div>
           <div className="rounded-md bg-white/[0.05] p-3">
             <p className="font-label text-xs uppercase text-muted">Away Goals</p>
-            <p className="font-display text-4xl text-white">
+            <p className="font-display text-3xl text-white sm:text-4xl">
               {summary.awayGoalsA} - {summary.awayGoalsB}
             </p>
           </div>
           <div className="rounded-md bg-white/[0.05] p-3">
             <p className="font-label text-xs uppercase text-muted">Winner</p>
-            <p className="font-display text-4xl text-gold">{winnerName}</p>
+            <p className="font-display text-3xl text-gold sm:text-4xl">{winnerName}</p>
           </div>
           <div className="rounded-md bg-white/[0.05] p-3">
             <p className="font-label text-xs uppercase text-muted">Legs Played</p>
-            <p className="font-display text-4xl text-white">{summary.fixtures.length}/2</p>
+            <p className="font-display text-3xl text-white sm:text-4xl">{summary.fixtures.length}/2</p>
           </div>
         </div>
       ) : (

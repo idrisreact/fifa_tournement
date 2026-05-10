@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Table2, Users, BarChart3, ShieldCheck } from "lucide-react";
+import { getCurrentPlayer, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
 import { sortStandings } from "@/lib/standings";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,11 @@ import { StandingsTable } from "@/components/StandingsTable";
 import { StatusChip } from "@/components/StatusChip";
 
 export default async function DashboardPage() {
-  const { season, players, fixtures, standings, usingDemoData } = await getTournamentData();
+  const [{ season, players, fixtures, standings, usingDemoData }, isAdmin, currentPlayer] = await Promise.all([
+    getTournamentData(),
+    isAdminUser(),
+    getCurrentPlayer()
+  ]);
   const played = fixtures.filter((fixture) => fixture.played);
   const totalGoals = played.reduce(
     (total, fixture) => total + (fixture.home_score ?? 0) + (fixture.away_score ?? 0),
@@ -43,7 +48,7 @@ export default async function DashboardPage() {
               </span>
             ) : null}
           </div>
-          <h1 className="font-display text-6xl uppercase leading-none text-white sm:text-8xl">
+          <h1 className="font-display text-5xl uppercase leading-none text-white sm:text-7xl lg:text-8xl">
             {season.name}
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-muted">
@@ -65,7 +70,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard label="Total Goals" value={totalGoals} detail={`${played.length} matches logged`} />
         <MetricCard label="Matches Played" value={played.length} detail={`${fixtures.length - played.length} remaining`} />
         <MetricCard
@@ -92,7 +97,7 @@ export default async function DashboardPage() {
           <CardContent className="space-y-3">
             {recentResults.length ? (
               recentResults.map((fixture) => (
-                <FixtureCard key={fixture.id} fixture={fixture} players={players} compact usingDemoData={usingDemoData} />
+                <FixtureCard key={fixture.id} fixture={fixture} players={players} compact usingDemoData={usingDemoData} isAdmin={isAdmin} currentPlayerId={currentPlayer?.id ?? null} />
               ))
             ) : (
               <p className="text-sm text-muted">No results logged yet.</p>
