@@ -40,7 +40,7 @@ export default async function SquadPage() {
         }
       />
 
-      <div className={showSidebar ? "grid gap-6 lg:grid-cols-[0.85fr_1.4fr]" : "space-y-6"}>
+      <div className={showSidebar ? "grid gap-6 lg:grid-cols-[0.85fr_1.4fr] lg:items-start" : "space-y-6"}>
         {showSidebar ? (
           <div className="space-y-6">
             {showSignInCard ? (
