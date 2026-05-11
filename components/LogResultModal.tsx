@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { logResultAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -18,8 +18,26 @@ type Props = {
 export function LogResultModal({ fixture, players, children, disabled }: Props) {
   const [rageQuit, setRageQuit] = useState(false);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const home = players.find((player) => player.id === fixture.home_player_id);
   const away = players.find((player) => player.id === fixture.away_player_id);
+
+  const handleSubmit = (formData: FormData) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await logResultAction(formData);
+        setOpen(false);
+      } catch (cause) {
+        const message =
+          cause instanceof Error
+            ? cause.message
+            : "Something went wrong logging the result. Please try again.";
+        setError(message);
+      }
+    });
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -45,7 +63,7 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
             </Dialog.Close>
           </div>
 
-          <form action={logResultAction} className="space-y-4">
+          <form action={handleSubmit} className="space-y-4">
             <input type="hidden" name="fixture_id" value={fixture.id} />
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -87,10 +105,21 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
             <div>
               <Label htmlFor={`screenshot-${fixture.id}`}>Screenshot upload</Label>
               <Input id={`screenshot-${fixture.id}`} name="screenshot" type="file" accept="image/*" />
+              <p className="mt-1 text-xs text-muted">Phone photos work — anything under 10 MB is fine.</p>
             </div>
 
-            <Button type="submit" className="w-full">
-              Submit Result
+            {error ? (
+              <p
+                role="alert"
+                className="inline-flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </p>
+            ) : null}
+
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? "Submitting…" : "Submit Result"}
             </Button>
           </form>
         </Dialog.Content>
