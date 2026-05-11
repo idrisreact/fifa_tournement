@@ -16,6 +16,9 @@ export function RealtimeRefresh() {
       .on("postgres_changes", { event: "*", schema: "public", table: "fixtures" }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "standings" }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "players" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fixture_comments" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fixture_reactions" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "predictions" }, () => router.refresh())
       .subscribe();
 
     return () => {

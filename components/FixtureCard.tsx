@@ -1,10 +1,12 @@
 import { AlertTriangle, Camera, Clock, Flag, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { AvatarCircle } from "@/components/AvatarCircle";
+import { FixtureSocialPanel } from "@/components/FixtureSocialPanel";
 import { LogResultModal } from "@/components/LogResultModal";
 import { SubmitResultModal } from "@/components/SubmitResultModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Fixture, Player } from "@/types";
+import type { Fixture, FixtureComment, FixtureReaction, Player, Prediction } from "@/types";
 
 type Props = {
   fixture: Fixture;
@@ -13,6 +15,9 @@ type Props = {
   usingDemoData?: boolean;
   isAdmin?: boolean;
   currentPlayerId?: string | null;
+  comments?: FixtureComment[];
+  reactions?: FixtureReaction[];
+  predictions?: Prediction[];
 };
 
 type ScoreSlotProps = {
@@ -101,7 +106,17 @@ function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlot
   return <span className="font-display text-2xl leading-none text-muted">—</span>;
 }
 
-export function FixtureCard({ fixture, players, compact, usingDemoData, isAdmin, currentPlayerId }: Props) {
+export function FixtureCard({
+  fixture,
+  players,
+  compact,
+  usingDemoData,
+  isAdmin,
+  currentPlayerId,
+  comments = [],
+  reactions = [],
+  predictions = []
+}: Props) {
   const home = fixture.home_player;
   const away = fixture.away_player;
   if (!home || !away) return null;
@@ -123,7 +138,12 @@ export function FixtureCard({ fixture, players, compact, usingDemoData, isAdmin,
         <div className="flex min-w-0 items-center gap-3">
           <AvatarCircle player={home} size="sm" />
           <div className="min-w-0">
-            <p className="truncate font-label text-lg uppercase text-white">{home.name}</p>
+            <Link
+              href={`/players/${home.id}`}
+              className="block truncate font-label text-lg uppercase text-white transition hover:text-pitch"
+            >
+              {home.name}
+            </Link>
             {!compact ? <p className="truncate text-xs text-muted">@{home.psn_tag}</p> : null}
           </div>
         </div>
@@ -132,7 +152,12 @@ export function FixtureCard({ fixture, players, compact, usingDemoData, isAdmin,
         </div>
         <div className="flex min-w-0 items-center justify-end gap-3 text-right">
           <div className="min-w-0">
-            <p className="truncate font-label text-lg uppercase text-white">{away.name}</p>
+            <Link
+              href={`/players/${away.id}`}
+              className="block truncate font-label text-lg uppercase text-white transition hover:text-pitch"
+            >
+              {away.name}
+            </Link>
             {!compact ? <p className="truncate text-xs text-muted">@{away.psn_tag}</p> : null}
           </div>
           <AvatarCircle player={away} size="sm" />
@@ -173,6 +198,15 @@ export function FixtureCard({ fixture, players, compact, usingDemoData, isAdmin,
         <p className="mt-3 text-xs text-muted">
           Voided — a player withdrew. This match does not count toward standings.
         </p>
+      ) : null}
+      {!compact && !usingDemoData ? (
+        <FixtureSocialPanel
+          fixture={fixture}
+          comments={comments}
+          reactions={reactions}
+          predictions={predictions}
+          currentPlayerId={currentPlayerId}
+        />
       ) : null}
     </div>
   );

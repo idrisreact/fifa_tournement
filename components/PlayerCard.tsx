@@ -1,4 +1,5 @@
 import { RotateCcw, Trash2, UserMinus } from "lucide-react";
+import Link from "next/link";
 import { reinstatePlayerAction, removePlayerAction, withdrawPlayerAction } from "@/app/actions";
 import { AvatarCircle } from "@/components/AvatarCircle";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,12 @@ export function PlayerCard({ player, index, canHardRemove, usingDemoData, isAdmi
         <AvatarCircle player={player} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate font-display text-3xl uppercase leading-none text-white">{player.name}</p>
+            <Link
+              href={`/players/${player.id}`}
+              className="truncate font-display text-3xl uppercase leading-none text-white transition hover:text-pitch"
+            >
+              {player.name}
+            </Link>
             {isCurrentPlayer ? (
               <span className="rounded-full border border-pitch/40 bg-pitch/15 px-2 py-0.5 font-label text-[10px] uppercase tracking-wide text-pitch">
                 You

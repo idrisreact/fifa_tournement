@@ -4,7 +4,7 @@ import { FixturesClient } from "@/components/FixturesClient";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function FixturesPage() {
-  const [{ players, fixtures, usingDemoData }, isAdmin, currentPlayer] = await Promise.all([
+  const [{ players, fixtures, comments, reactions, predictions, usingDemoData }, isAdmin, currentPlayer] = await Promise.all([
     getTournamentData(),
     isAdminUser(),
     getCurrentPlayer()
@@ -23,6 +23,9 @@ export default async function FixturesPage() {
         usingDemoData={usingDemoData}
         isAdmin={isAdmin}
         currentPlayerId={currentPlayer?.id ?? null}
+        comments={comments}
+        reactions={reactions}
+        predictions={predictions}
       />
     </div>
   );

@@ -46,6 +46,37 @@ export type Fixture = {
   away_player?: Player | null;
 };
 
+export type FixtureComment = {
+  id: string;
+  fixture_id: string;
+  player_id: string;
+  body: string;
+  created_at: string;
+  player?: Player | null;
+};
+
+export type FixtureReactionType = "fire" | "shock" | "laugh" | "respect";
+
+export type FixtureReaction = {
+  id: string;
+  fixture_id: string;
+  player_id: string;
+  reaction: FixtureReactionType;
+  created_at: string;
+  player?: Player | null;
+};
+
+export type Prediction = {
+  id: string;
+  fixture_id: string;
+  player_id: string;
+  home_score: number;
+  away_score: number;
+  created_at: string;
+  updated_at: string;
+  player?: Player | null;
+};
+
 export type Standing = {
   id?: string;
   season_id: string;
@@ -70,6 +101,9 @@ export type TournamentData = {
   players: Player[];
   fixtures: Fixture[];
   standings: Standing[];
+  comments: FixtureComment[];
+  reactions: FixtureReaction[];
+  predictions: Prediction[];
   usingDemoData: boolean;
 };
 

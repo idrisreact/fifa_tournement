@@ -1,4 +1,12 @@
-import type { Fixture, Season, Standing, TournamentData } from "@/types";
+import type {
+  Fixture,
+  FixtureComment,
+  FixtureReaction,
+  Prediction,
+  Season,
+  Standing,
+  TournamentData
+} from "@/types";
 import { attachPlayers } from "@/lib/utils";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
@@ -9,6 +17,16 @@ const unconfiguredSeason: Season = {
   max_players: 12
 };
 
+function isMissingInteractionTable(error: { code?: string; message?: string } | null) {
+  return (
+    error?.code === "PGRST205" ||
+    error?.message?.includes("schema cache") ||
+    error?.message?.includes("fixture_comments") ||
+    error?.message?.includes("fixture_reactions") ||
+    error?.message?.includes("predictions")
+  );
+}
+
 export async function getTournamentData(): Promise<TournamentData> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) {
@@ -17,6 +35,9 @@ export async function getTournamentData(): Promise<TournamentData> {
       players: [],
       fixtures: [],
       standings: [],
+      comments: [],
+      reactions: [],
+      predictions: [],
       usingDemoData: true
     };
   }
@@ -58,16 +79,79 @@ export async function getTournamentData(): Promise<TournamentData> {
 
   const players = playersResponse.data ?? [];
   const fixtures = attachPlayers((fixturesResponse.data ?? []) as Fixture[], players);
+  const fixtureIds = fixtures.map((fixture) => fixture.id);
   const standings = ((standingsResponse.data ?? []) as Standing[]).map((standing) => ({
     ...standing,
     player: players.find((player) => player.id === standing.player_id) ?? null
   }));
+
+  let comments: FixtureComment[] = [];
+  let reactions: FixtureReaction[] = [];
+  let predictions: Prediction[] = [];
+
+  if (fixtureIds.length) {
+    const [commentsResponse, reactionsResponse, predictionsResponse] = await Promise.all([
+      supabase
+        .from("fixture_comments")
+        .select("*")
+        .in("fixture_id", fixtureIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("fixture_reactions")
+        .select("*")
+        .in("fixture_id", fixtureIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("predictions")
+        .select("*")
+        .in("fixture_id", fixtureIds)
+        .order("created_at", { ascending: true })
+    ]);
+
+    const missingInteractionTables =
+      isMissingInteractionTable(commentsResponse.error) ||
+      isMissingInteractionTable(reactionsResponse.error) ||
+      isMissingInteractionTable(predictionsResponse.error);
+
+    if (missingInteractionTables) {
+      return {
+        season,
+        players,
+        fixtures,
+        standings,
+        comments: [],
+        reactions: [],
+        predictions: [],
+        usingDemoData: false
+      };
+    }
+
+    if (commentsResponse.error) throw new Error(commentsResponse.error.message);
+    if (reactionsResponse.error) throw new Error(reactionsResponse.error.message);
+    if (predictionsResponse.error) throw new Error(predictionsResponse.error.message);
+
+    comments = ((commentsResponse.data ?? []) as FixtureComment[]).map((comment) => ({
+      ...comment,
+      player: players.find((player) => player.id === comment.player_id) ?? null
+    }));
+    reactions = ((reactionsResponse.data ?? []) as FixtureReaction[]).map((reaction) => ({
+      ...reaction,
+      player: players.find((player) => player.id === reaction.player_id) ?? null
+    }));
+    predictions = ((predictionsResponse.data ?? []) as Prediction[]).map((prediction) => ({
+      ...prediction,
+      player: players.find((player) => player.id === prediction.player_id) ?? null
+    }));
+  }
 
   return {
     season,
     players,
     fixtures,
     standings,
+    comments,
+    reactions,
+    predictions,
     usingDemoData: false
   };
 }

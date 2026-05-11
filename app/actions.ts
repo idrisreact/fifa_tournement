@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getCurrentUser, requireAdminUser, requireFixtureParticipant } from "@/lib/auth";
+import {
+  getCurrentPlayer,
+  getCurrentUser,
+  requireAdminUser,
+  requireFixtureParticipant
+} from "@/lib/auth";
 import { generateRoundRobin } from "@/lib/fixtures";
 import { calculateStandings } from "@/lib/standings";
 import { AVATAR_COLORS } from "@/lib/utils";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import type { Fixture, Player } from "@/types";
+import type { Fixture, FixtureReactionType, Player } from "@/types";
 
 const scoreSchema = z.object({
   fixtureId: z.string().uuid(),
@@ -31,6 +36,7 @@ function refreshApp() {
   ["/", "/squad", "/fixtures", "/standings", "/stats", "/admin"].forEach((path) =>
     revalidatePath(path)
   );
+  revalidatePath("/players/[id]", "page");
 }
 
 async function recordFixtureUpload(
@@ -427,6 +433,22 @@ const submissionSchema = z.object({
   awayScore: z.coerce.number().int().min(0).max(99)
 });
 
+const commentSchema = z.object({
+  fixtureId: z.string().uuid(),
+  body: z.string().trim().min(1).max(280)
+});
+
+const predictionSchema = z.object({
+  fixtureId: z.string().uuid(),
+  homeScore: z.coerce.number().int().min(0).max(99),
+  awayScore: z.coerce.number().int().min(0).max(99)
+});
+
+const reactionSchema = z.object({
+  fixtureId: z.string().uuid(),
+  reaction: z.enum(["fire", "shock", "laugh", "respect"])
+});
+
 export async function claimPlayerAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Sign in to claim a squad name.");
@@ -618,6 +640,93 @@ export async function clearSubmissionsAction(formData: FormData) {
     .eq("fixture_id", fixtureId);
   if (uploadsError) throw new Error(uploadsError.message);
 
+  refreshApp();
+}
+
+export async function addFixtureCommentAction(formData: FormData) {
+  const player = await getCurrentPlayer();
+  if (!player) throw new Error("Sign in and claim a squad name to comment.");
+
+  const parsed = commentSchema.parse({
+    fixtureId: formData.get("fixture_id"),
+    body: String(formData.get("body") ?? "")
+  });
+
+  const supabase = requireAdminClient();
+  const { error } = await supabase.from("fixture_comments").insert({
+    fixture_id: parsed.fixtureId,
+    player_id: player.id,
+    body: parsed.body
+  });
+  if (error) throw new Error(error.message);
+  refreshApp();
+}
+
+export async function toggleFixtureReactionAction(formData: FormData) {
+  const player = await getCurrentPlayer();
+  if (!player) throw new Error("Sign in and claim a squad name to react.");
+
+  const parsed = reactionSchema.parse({
+    fixtureId: formData.get("fixture_id"),
+    reaction: formData.get("reaction")
+  });
+
+  const supabase = requireAdminClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("fixture_reactions")
+    .select("id")
+    .eq("fixture_id", parsed.fixtureId)
+    .eq("player_id", player.id)
+    .eq("reaction", parsed.reaction)
+    .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+
+  const reaction = parsed.reaction as FixtureReactionType;
+  if (existing) {
+    const { error } = await supabase.from("fixture_reactions").delete().eq("id", existing.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("fixture_reactions").insert({
+      fixture_id: parsed.fixtureId,
+      player_id: player.id,
+      reaction
+    });
+    if (error) throw new Error(error.message);
+  }
+  refreshApp();
+}
+
+export async function upsertPredictionAction(formData: FormData) {
+  const player = await getCurrentPlayer();
+  if (!player) throw new Error("Sign in and claim a squad name to predict scores.");
+
+  const parsed = predictionSchema.parse({
+    fixtureId: formData.get("fixture_id"),
+    homeScore: formData.get("home_score"),
+    awayScore: formData.get("away_score")
+  });
+
+  const supabase = requireAdminClient();
+  const { data: fixture, error: fixtureError } = await supabase
+    .from("fixtures")
+    .select("played, voided")
+    .eq("id", parsed.fixtureId)
+    .single();
+  if (fixtureError) throw new Error(fixtureError.message);
+  if (fixture.played) throw new Error("Predictions are locked once a fixture is played.");
+  if (fixture.voided) throw new Error("Predictions are closed for voided fixtures.");
+
+  const { error } = await supabase.from("predictions").upsert(
+    {
+      fixture_id: parsed.fixtureId,
+      player_id: player.id,
+      home_score: parsed.homeScore,
+      away_score: parsed.awayScore,
+      updated_at: new Date().toISOString()
+    },
+    { onConflict: "fixture_id,player_id" }
+  );
+  if (error) throw new Error(error.message);
   refreshApp();
 }
 
