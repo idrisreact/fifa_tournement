@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FixtureCard } from "@/components/FixtureCard";
 import { MetricCard } from "@/components/MetricCard";
+import { MyDashboard } from "@/components/MyDashboard";
 import { SignInWithGoogleButton } from "@/components/SignInWithGoogleButton";
 import { StandingsTable } from "@/components/StandingsTable";
 import { StatusChip } from "@/components/StatusChip";
 
 export default async function DashboardPage() {
-  const [{ season, players, fixtures, standings, usingDemoData }, isAdmin, currentPlayer, currentUser] = await Promise.all([
+  const [{ season, players, fixtures, standings, predictions, usingDemoData }, isAdmin, currentPlayer, currentUser] = await Promise.all([
     getTournamentData(),
     isAdminUser(),
     getCurrentPlayer(),
@@ -85,6 +86,16 @@ export default async function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {currentPlayer ? (
+        <MyDashboard
+          currentPlayer={currentPlayer}
+          players={players}
+          fixtures={fixtures}
+          standings={sortedStandings}
+          predictions={predictions}
+        />
+      ) : null}
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard label="Total Goals" value={totalGoals} detail={`${played.length} matches logged`} />

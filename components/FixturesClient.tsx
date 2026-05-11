@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { FixtureCard } from "@/components/FixtureCard";
 import { Button } from "@/components/ui/button";
-import type { Fixture, Player } from "@/types";
+import type { Fixture, FixtureComment, FixtureReaction, Player, Prediction } from "@/types";
 
 type Filter = "all" | "upcoming" | "played";
 
@@ -13,9 +13,21 @@ type Props = {
   usingDemoData?: boolean;
   isAdmin?: boolean;
   currentPlayerId?: string | null;
+  comments?: FixtureComment[];
+  reactions?: FixtureReaction[];
+  predictions?: Prediction[];
 };
 
-export function FixturesClient({ players, fixtures, usingDemoData, isAdmin, currentPlayerId }: Props) {
+export function FixturesClient({
+  players,
+  fixtures,
+  usingDemoData,
+  isAdmin,
+  currentPlayerId,
+  comments = [],
+  reactions = [],
+  predictions = []
+}: Props) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const filtered = useMemo(() => {
@@ -62,6 +74,9 @@ export function FixturesClient({ players, fixtures, usingDemoData, isAdmin, curr
                 usingDemoData={usingDemoData}
                 isAdmin={isAdmin}
                 currentPlayerId={currentPlayerId}
+                comments={comments.filter((comment) => comment.fixture_id === fixture.id)}
+                reactions={reactions.filter((reaction) => reaction.fixture_id === fixture.id)}
+                predictions={predictions.filter((prediction) => prediction.fixture_id === fixture.id)}
               />
             ))}
           </div>
