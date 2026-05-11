@@ -73,7 +73,7 @@ export function ClaimPlayerForm({ unclaimedPlayers, canSelfRegister, fixturesGen
                 </div>
                 <div>
                   <Label htmlFor="self-register-psn">PSN tag</Label>
-                  <Input id="self-register-psn" name="psn_tag" placeholder="marcus_fc25" required />
+                  <Input id="self-register-psn" name="psn_tag" placeholder="marcus_fc26" required />
                 </div>
                 <Button type="submit" variant="secondary" className="w-full">
                   <Plus className="h-4 w-4" />

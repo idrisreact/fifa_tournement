@@ -28,7 +28,7 @@ export const rulesSections = [
   {
     title: "Match Settings",
     items: [
-      "All matches are played on EA Sports FC 25 on PS5.",
+      "All matches are played on EA Sports FC 26 on PS5.",
       "Players should agree teams and lobby settings before kickoff.",
       "Results must be submitted with the correct scoreline and screenshot proof."
     ]

@@ -45,9 +45,10 @@ export default async function DashboardPage() {
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block">
           <Image
             src="/idris_boss.png"
-            alt="Idris boss"
+            alt=""
+            aria-hidden
             fill
-            priority
+            quality={65}
             sizes="(min-width: 1024px) 50vw, 0px"
             className="object-cover object-right opacity-90 [mask-image:linear-gradient(to_left,black_55%,transparent)]"
           />
@@ -92,7 +93,7 @@ export default async function DashboardPage() {
           currentPlayer={currentPlayer}
           players={players}
           fixtures={fixtures}
-          standings={sortedStandings}
+          sortedStandings={sortedStandings}
           predictions={predictions}
         />
       ) : null}
