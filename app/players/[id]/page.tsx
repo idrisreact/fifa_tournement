@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, MessageSquare, Target, Trophy } from "lucide-react";
+import { ArrowLeft, Award as AwardIcon, CalendarDays, MessageSquare, Skull, Target, Trophy } from "lucide-react";
+import { AchievementBadge } from "@/components/AchievementBadge";
 import { AvatarCircle } from "@/components/AvatarCircle";
 import { FixtureCard } from "@/components/FixtureCard";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,6 +9,7 @@ import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentPlayer, isAdminUser } from "@/lib/auth";
+import { awardsByKind, awardsForPlayer, computeAwards } from "@/lib/badges";
 import { getTournamentData } from "@/lib/data";
 import { sortStandings } from "@/lib/standings";
 import { formatRecord, goalDifference } from "@/lib/utils";
@@ -48,6 +50,9 @@ export default async function PlayerProfilePage({ params }: Props) {
     );
   }).length;
   const playerComments = comments.filter((comment) => comment.player_id === player.id).slice(-5);
+  const awards = computeAwards({ players, fixtures, standings: sortedStandings });
+  const playerAwards = awardsForPlayer(awards, player.id);
+  const { honour: honourBadges, shame: shameBadges } = awardsByKind(playerAwards);
 
   return (
     <div className="space-y-6">
@@ -76,6 +81,54 @@ export default async function PlayerProfilePage({ params }: Props) {
         <StatCard label="Goal Difference" value={goalDifference(standing ?? { gf: 0, ga: 0 })} name="Goals" detail={`${standing?.gf ?? 0} for, ${standing?.ga ?? 0} against`} />
         <StatCard label="Predictions" value={exactPicks} name="Exact picks" detail={`${playerPredictions.length} total picks`} />
         <StatCard label="Bonus Points" value={standing?.bonus_pts ?? 0} name="Extras" detail={`${standing?.comeback_wins ?? 0} comebacks`} />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <span className="inline-flex items-center gap-2">
+                <AwardIcon className="h-5 w-5 text-gold" />
+                Achievements
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {honourBadges.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {honourBadges.map((award) => (
+                  <AchievementBadge key={award.id} award={award} showWinners={false} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                No badges yet. Win a match, score a hat-trick, or sweep an opponent to earn one.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <span className="inline-flex items-center gap-2">
+                <Skull className="h-5 w-5 text-red-300" />
+                Wall of Shame
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {shameBadges.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {shameBadges.map((award) => (
+                  <AchievementBadge key={award.id} award={award} showWinners={false} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">Spotless record — no shame badges. For now.</p>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
