@@ -1,6 +1,6 @@
-# FC25 Group Chat Tournament
+# FC26 Group Chat Tournament
 
-A Next.js 14 App Router dashboard for a 12-player EA Sports FC 25 PS5 league.
+A Next.js 14 App Router dashboard for a 12-player EA Sports FC 26 PS5 league.
 
 ## Run Locally
 

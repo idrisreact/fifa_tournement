@@ -110,7 +110,8 @@ export async function addPlayerAction(formData: FormData) {
       .limit(1)
       .maybeSingle()
   ]);
-  const cap = season?.max_players ?? 12;
+  if (!season) throw new Error("No active season found.");
+  const cap = season.max_players;
   if ((count ?? 0) >= cap) throw new Error(`The squad is already full (${cap} players).`);
 
   const avatarColor = AVATAR_COLORS[count ?? 0] ?? AVATAR_COLORS[0];
@@ -510,7 +511,8 @@ export async function selfRegisterPlayerAction(formData: FormData) {
       .limit(1)
       .maybeSingle()
   ]);
-  const cap = season?.max_players ?? 12;
+  if (!season) throw new Error("No active season found.");
+  const cap = season.max_players;
   if ((playerCount ?? 0) >= cap) throw new Error(`The squad is already full (${cap} players).`);
 
   const avatarColor = AVATAR_COLORS[playerCount ?? 0] ?? AVATAR_COLORS[0];

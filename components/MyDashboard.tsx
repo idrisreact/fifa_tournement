@@ -9,14 +9,20 @@ type Props = {
   currentPlayer: Player;
   players: Player[];
   fixtures: Fixture[];
-  standings: Standing[];
+  /** Must be pre-sorted with sortStandings — position is taken directly from this order. */
+  sortedStandings: Standing[];
   predictions: Prediction[];
 };
 
-export function MyDashboard({ currentPlayer, players, fixtures, standings, predictions }: Props) {
-  const myStanding = standings.find((standing) => standing.player_id === currentPlayer.id);
-  const sorted = [...standings].sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga));
-  const position = sorted.findIndex((standing) => standing.player_id === currentPlayer.id) + 1;
+export function MyDashboard({
+  currentPlayer,
+  players,
+  fixtures,
+  sortedStandings,
+  predictions
+}: Props) {
+  const myStanding = sortedStandings.find((standing) => standing.player_id === currentPlayer.id);
+  const position = sortedStandings.findIndex((standing) => standing.player_id === currentPlayer.id) + 1;
   const nextFixtures = fixtures
     .filter(
       (fixture) =>

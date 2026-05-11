@@ -1,10 +1,7 @@
 import { Flame, Laugh, MessageSquare, ShieldCheck, Sparkles, Zap } from "lucide-react";
-import {
-  addFixtureCommentAction,
-  toggleFixtureReactionAction,
-  upsertPredictionAction
-} from "@/app/actions";
+import { toggleFixtureReactionAction, upsertPredictionAction } from "@/app/actions";
 import { AvatarCircle } from "@/components/AvatarCircle";
+import { CommentForm } from "@/components/CommentForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
@@ -157,15 +154,7 @@ export function FixtureSocialPanel({
           <p className="text-sm text-muted">No comments yet.</p>
         )}
 
-        {canInteract ? (
-          <form action={addFixtureCommentAction} className="flex gap-2">
-            <input type="hidden" name="fixture_id" value={fixture.id} />
-            <Input name="body" maxLength={280} placeholder="Add a comment" required />
-            <Button type="submit" size="sm">
-              Post
-            </Button>
-          </form>
-        ) : null}
+        {canInteract ? <CommentForm fixtureId={fixture.id} /> : null}
       </div>
     </div>
   );

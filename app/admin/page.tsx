@@ -128,7 +128,7 @@ export default async function AdminPage() {
                     type="number"
                     min={Math.max(2, players.length)}
                     max={20}
-                    defaultValue={season.max_players ?? 12}
+                    defaultValue={season.max_players}
                     disabled={usingDemoData || fixtures.length > 0}
                   />
                 </div>
@@ -140,7 +140,7 @@ export default async function AdminPage() {
               <p className="text-xs text-muted">
                 {fixtures.length > 0
                   ? "Fixtures have been generated. Reset fixtures before changing squad size."
-                  : `Currently ${players.length} of ${season.max_players ?? 12} slots filled. Generating ${season.max_players ?? 12} players produces ${(season.max_players ?? 12) * ((season.max_players ?? 12) - 1)} fixtures.`}
+                  : `Currently ${players.length} of ${season.max_players} slots filled. Generating ${season.max_players} players produces ${season.max_players * (season.max_players - 1)} fixtures.`}
               </p>
             </form>
           </CardContent>

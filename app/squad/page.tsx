@@ -21,7 +21,7 @@ export default async function SquadPage() {
   const showClaimForm = !!currentUser && !currentPlayer;
   const showSignInCard = !currentUser && !usingDemoData;
   const unclaimedPlayers = players.filter((player) => !player.auth_user_id && player.is_active !== false);
-  const maxPlayers = season.max_players ?? 12;
+  const maxPlayers = season.max_players;
   const squadFull = players.length >= maxPlayers;
   const fixturesGenerated = fixtureCount > 0;
   const canSelfRegister = !squadFull && !fixturesGenerated && !usingDemoData;
@@ -79,7 +79,7 @@ export default async function SquadPage() {
                       </div>
                       <div>
                         <Label htmlFor="psn_tag">PSN Tag</Label>
-                        <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc25" required disabled={squadFull || usingDemoData} />
+                        <Input id="psn_tag" name="psn_tag" placeholder="marcus_fc26" required disabled={squadFull || usingDemoData} />
                       </div>
                       <Button type="submit" className="w-full" disabled={squadFull || usingDemoData}>
                         <Plus className="h-4 w-4" />

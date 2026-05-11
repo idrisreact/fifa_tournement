@@ -25,7 +25,7 @@ export async function SiteNav() {
             <Trophy className="h-5 w-5" />
           </span>
           <span>
-            <span className="block font-display text-xl uppercase leading-none text-white sm:text-2xl">FC25 League</span>
+            <span className="block font-display text-xl uppercase leading-none text-white sm:text-2xl">FC26 League</span>
             <span className="hidden font-label text-xs uppercase tracking-wide text-muted sm:block">Group Chat Tournament</span>
           </span>
         </Link>

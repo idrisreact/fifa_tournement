@@ -12,7 +12,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase";
 
 const unconfiguredSeason: Season = {
   id: "unconfigured",
-  name: "FC25 Group Chat League",
+  name: "FC26 Group Chat League",
   status: "setup",
   max_players: 12
 };
@@ -55,7 +55,7 @@ export async function getTournamentData(): Promise<TournamentData> {
   if (!season) {
     const { data: inserted, error } = await supabase
       .from("seasons")
-      .insert({ name: "FC25 Group Chat League", status: "setup" })
+      .insert({ name: "FC26 Group Chat League", status: "setup" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
