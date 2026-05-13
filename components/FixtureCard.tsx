@@ -161,7 +161,7 @@ export function FixtureCard({
             </Link>
             {!compact ? <p className="truncate text-xs text-muted">@{away.psn_tag}</p> : null}
           </div>
-          <AvatarCircle player={away} size="sm" className="hidden sm:flex" />
+          <AvatarCircle player={away} size="sm" className="hidden sm:grid" />
         </div>
       </div>
       {fixture.played && (fixture.rage_quit_player_id || fixture.comeback_win || fixture.result_screenshot_url) ? (
