@@ -2,7 +2,12 @@ import type { Fixture, Player, Standing } from "@/types";
 import { fixtureLoserId, fixtureWinnerId, playedScore, scoreMargin } from "@/lib/fixtures";
 import { goalDifference } from "@/lib/utils";
 
-export function calculateStandings(seasonId: string, players: Player[], fixtures: Fixture[]): Standing[] {
+export function calculateStandings(
+  seasonId: string,
+  players: Player[],
+  fixtures: Fixture[],
+  manualBonuses?: Map<string, number>
+): Standing[] {
   const playedFixtures = fixtures.filter(
     (fixture) =>
       fixture.played &&
@@ -25,6 +30,7 @@ export function calculateStandings(seasonId: string, players: Player[], fixtures
       ga: 0,
       pts: 0,
       bonus_pts: 0,
+      manual_bonus_pts: 0,
       blowout_wins: 0,
       comeback_wins: 0,
       rage_quits: 0,
@@ -88,6 +94,14 @@ export function calculateStandings(seasonId: string, players: Player[], fixtures
 
   for (const standing of rows.values()) {
     if (standing.rage_quits >= 2) standing.pts -= 3;
+  }
+
+  if (manualBonuses) {
+    for (const standing of rows.values()) {
+      const adjustment = manualBonuses.get(standing.player_id) ?? 0;
+      standing.manual_bonus_pts = adjustment;
+      standing.pts += adjustment;
+    }
   }
 
   return sortStandings([...rows.values()], playedFixtures);

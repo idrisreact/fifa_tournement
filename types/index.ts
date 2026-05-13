@@ -89,6 +89,7 @@ export type Standing = {
   ga: number;
   pts: number;
   bonus_pts: number;
+  manual_bonus_pts: number;
   blowout_wins: number;
   comeback_wins: number;
   rage_quits: number;

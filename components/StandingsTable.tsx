@@ -79,7 +79,18 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
                 <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.gf}</td>
                 <td className="hidden px-3 py-3 text-center sm:table-cell">{standing.ga}</td>
                 <td className="px-3 py-3 text-center">{goalDifference(standing)}</td>
-                <td className="hidden px-3 py-3 text-center text-pitch sm:table-cell">{standing.bonus_pts}</td>
+                <td className="hidden px-3 py-3 text-center sm:table-cell">
+                  <span className="text-pitch">{standing.bonus_pts}</span>
+                  {standing.manual_bonus_pts ? (
+                    <span
+                      title={`Admin adjustment: ${standing.manual_bonus_pts > 0 ? "+" : ""}${standing.manual_bonus_pts}`}
+                      className="ml-1 inline-flex items-center rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-bold text-gold"
+                    >
+                      {standing.manual_bonus_pts > 0 ? "+" : ""}
+                      {standing.manual_bonus_pts}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="hidden px-3 py-3 md:table-cell">
                   <div className="flex justify-center gap-1">
                     {form.length ? (

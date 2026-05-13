@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { AlertTriangle, X } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { X } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { submitResultAction } from "@/app/actions";
+import { useActionMutation } from "@/lib/hooks/use-action-mutation";
+import { submitResultFormSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import type { Fixture, Player } from "@/types";
@@ -14,31 +19,53 @@ type Props = {
   children: ReactNode;
 };
 
+type FormValues = z.infer<typeof submitResultFormSchema>;
+
+const STATUS_TOAST: Record<"pending" | "confirmed" | "dispute", string> = {
+  pending: "Score submitted — waiting for opponent",
+  confirmed: "Result confirmed!",
+  dispute: "Submitted — admin will review (scores don't match)"
+};
+
 export function SubmitResultModal({ fixture, players, children }: Props) {
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [screenshot, setScreenshot] = useState<File | null>(null);
   const home = players.find((player) => player.id === fixture.home_player_id);
   const away = players.find((player) => player.id === fixture.away_player_id);
 
-  const handleSubmit = (formData: FormData) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await submitResultAction(formData);
-        setOpen(false);
-      } catch (cause) {
-        const message =
-          cause instanceof Error
-            ? cause.message
-            : "Something went wrong submitting your score. Please try again.";
-        setError(message);
-      }
-    });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(submitResultFormSchema),
+    defaultValues: { homeScore: 0, awayScore: 0 }
+  });
+
+  const mutation = useActionMutation(submitResultAction, {
+    successMessage: (data) => STATUS_TOAST[data.status],
+    onSuccess: () => {
+      setOpen(false);
+      form.reset();
+      setScreenshot(null);
+    }
+  });
+
+  const onSubmit = form.handleSubmit((values) => {
+    const formData = new FormData();
+    formData.append("fixture_id", fixture.id);
+    formData.append("home_score", String(values.homeScore));
+    formData.append("away_score", String(values.awayScore));
+    if (screenshot) formData.append("screenshot", screenshot);
+    mutation.mutate(formData);
+  });
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      form.reset();
+      setScreenshot(null);
+    }
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>{children}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
@@ -63,34 +90,51 @@ export function SubmitResultModal({ fixture, players, children }: Props) {
             Your opponent submits independently. The result is only confirmed if both scores match.
           </p>
 
-          <form action={handleSubmit} className="space-y-4">
-            <input type="hidden" name="fixture_id" value={fixture.id} />
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor={`submit-home-${fixture.id}`}>{home?.name} score</Label>
-                <Input id={`submit-home-${fixture.id}`} name="home_score" type="number" min="0" required />
+                <Input
+                  id={`submit-home-${fixture.id}`}
+                  type="number"
+                  min="0"
+                  aria-invalid={!!form.formState.errors.homeScore}
+                  {...form.register("homeScore", { valueAsNumber: true })}
+                />
+                {form.formState.errors.homeScore ? (
+                  <p className="mt-1 text-xs text-red-300">
+                    {form.formState.errors.homeScore.message}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor={`submit-away-${fixture.id}`}>{away?.name} score</Label>
-                <Input id={`submit-away-${fixture.id}`} name="away_score" type="number" min="0" required />
+                <Input
+                  id={`submit-away-${fixture.id}`}
+                  type="number"
+                  min="0"
+                  aria-invalid={!!form.formState.errors.awayScore}
+                  {...form.register("awayScore", { valueAsNumber: true })}
+                />
+                {form.formState.errors.awayScore ? (
+                  <p className="mt-1 text-xs text-red-300">
+                    {form.formState.errors.awayScore.message}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div>
               <Label htmlFor={`submit-screenshot-${fixture.id}`}>Screenshot (optional)</Label>
-              <Input id={`submit-screenshot-${fixture.id}`} name="screenshot" type="file" accept="image/*" />
+              <Input
+                id={`submit-screenshot-${fixture.id}`}
+                type="file"
+                accept="image/*"
+                onChange={(event) => setScreenshot(event.currentTarget.files?.[0] ?? null)}
+              />
               <p className="mt-1 text-xs text-muted">Phone photos work — anything under 10 MB is fine.</p>
             </div>
-            {error ? (
-              <p
-                role="alert"
-                className="inline-flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"
-              >
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </p>
-            ) : null}
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Submitting…" : "Submit My Score"}
+            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              {mutation.isPending ? "Submitting…" : "Submit My Score"}
             </Button>
           </form>
         </Dialog.Content>
