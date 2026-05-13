@@ -10,19 +10,12 @@ import {
   requireFixtureParticipant
 } from "@/lib/auth";
 import { generateRoundRobin } from "@/lib/fixtures";
+import { manualPointsSchema, scoreSchema, submissionSchema } from "@/lib/schemas";
 import { calculateStandings } from "@/lib/standings";
 import { AVATAR_COLORS } from "@/lib/utils";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { Fixture, FixtureReactionType, Player } from "@/types";
-
-const scoreSchema = z.object({
-  fixtureId: z.string().uuid(),
-  homeScore: z.coerce.number().int().min(0).max(99),
-  awayScore: z.coerce.number().int().min(0).max(99),
-  rageQuitPlayerId: z.string().optional().nullable(),
-  comebackWin: z.coerce.boolean().optional().default(false)
-});
 
 function requireAdminClient() {
   const supabase = createSupabaseAdminClient();
@@ -403,36 +396,36 @@ export async function updateSeasonMaxPlayersAction(formData: FormData) {
 export async function manualPointsAction(formData: FormData) {
   await requireAdminUser();
   const supabase = requireAdminClient();
-  const seasonId = String(formData.get("season_id") ?? "");
-  const playerId = String(formData.get("player_id") ?? "");
-  const points = Number(formData.get("points") ?? 0);
+  const parsed = manualPointsSchema.parse({
+    seasonId: formData.get("season_id"),
+    playerId: formData.get("player_id"),
+    points: formData.get("points"),
+    reason: formData.get("reason") ?? ""
+  });
 
   const { data: current, error: currentError } = await supabase
     .from("standings")
-    .select("*")
-    .eq("season_id", seasonId)
-    .eq("player_id", playerId)
+    .select("manual_bonus_pts")
+    .eq("season_id", parsed.seasonId)
+    .eq("player_id", parsed.playerId)
     .single();
   if (currentError) throw new Error(currentError.message);
+
+  const nextManualBonus = (current.manual_bonus_pts ?? 0) + parsed.points;
 
   const { error } = await supabase
     .from("standings")
     .update({
-      pts: current.pts + points,
-      bonus_pts: current.bonus_pts + points,
+      manual_bonus_pts: nextManualBonus,
       updated_at: new Date().toISOString()
     })
-    .eq("season_id", seasonId)
-    .eq("player_id", playerId);
+    .eq("season_id", parsed.seasonId)
+    .eq("player_id", parsed.playerId);
   if (error) throw new Error(error.message);
+
+  await recalculateStandings(parsed.seasonId);
   refreshApp();
 }
-
-const submissionSchema = z.object({
-  fixtureId: z.string().uuid(),
-  homeScore: z.coerce.number().int().min(0).max(99),
-  awayScore: z.coerce.number().int().min(0).max(99)
-});
 
 const commentSchema = z.object({
   fixtureId: z.string().uuid(),
@@ -537,7 +530,9 @@ export async function releasePlayerLinkAction(formData: FormData) {
   refreshApp();
 }
 
-export async function submitResultAction(formData: FormData) {
+export type SubmitResultStatus = "pending" | "confirmed" | "dispute";
+
+export async function submitResultAction(formData: FormData): Promise<{ status: SubmitResultStatus }> {
   const parsed = submissionSchema.parse({
     fixtureId: formData.get("fixture_id"),
     homeScore: formData.get("home_score"),
@@ -586,6 +581,8 @@ export async function submitResultAction(formData: FormData) {
     [`${sidePrefix}_submitted_at`]: new Date().toISOString()
   };
 
+  let status: SubmitResultStatus = "pending";
+
   if (otherSubmittedAt !== null && otherSubmittedAt !== undefined) {
     const matches = otherHome === parsed.homeScore && otherAway === parsed.awayScore;
     if (matches) {
@@ -595,6 +592,7 @@ export async function submitResultAction(formData: FormData) {
       updatePayload.played_at = new Date().toISOString();
       updatePayload.dispute_open = false;
       updatePayload.dispute_reason = null;
+      status = "confirmed";
     } else {
       updatePayload.dispute_open = true;
       updatePayload.dispute_reason = `Submissions disagree: home claims ${
@@ -602,6 +600,7 @@ export async function submitResultAction(formData: FormData) {
       }, away claims ${
         role === "away" ? `${parsed.homeScore}-${parsed.awayScore}` : `${otherHome}-${otherAway}`
       }.`;
+      status = "dispute";
     }
   }
 
@@ -615,6 +614,7 @@ export async function submitResultAction(formData: FormData) {
     await recalculateStandings(fixture.season_id);
   }
   refreshApp();
+  return { status };
 }
 
 export async function clearSubmissionsAction(formData: FormData) {
@@ -734,21 +734,36 @@ export async function upsertPredictionAction(formData: FormData) {
 
 export async function recalculateStandings(seasonId: string) {
   const supabase = requireAdminClient();
-  const [{ data: players, error: playersError }, { data: fixtures, error: fixturesError }] =
-    await Promise.all([
-      supabase.from("players").select("*"),
-      supabase.from("fixtures").select("*").eq("season_id", seasonId)
-    ]);
+  const [
+    { data: players, error: playersError },
+    { data: fixtures, error: fixturesError },
+    { data: existingStandings, error: existingError }
+  ] = await Promise.all([
+    supabase.from("players").select("*"),
+    supabase.from("fixtures").select("*").eq("season_id", seasonId),
+    supabase
+      .from("standings")
+      .select("player_id, manual_bonus_pts")
+      .eq("season_id", seasonId)
+  ]);
 
   if (playersError) throw new Error(playersError.message);
   if (fixturesError) throw new Error(fixturesError.message);
+  if (existingError) throw new Error(existingError.message);
 
-  const standings = calculateStandings(seasonId, players as Player[], fixtures as Fixture[]).map(
-    ({ player, id, updated_at, ...standing }) => ({
-      ...standing,
-      updated_at: new Date().toISOString()
-    })
+  const manualBonuses = new Map<string, number>(
+    (existingStandings ?? []).map((row) => [row.player_id, row.manual_bonus_pts ?? 0])
   );
+
+  const standings = calculateStandings(
+    seasonId,
+    players as Player[],
+    fixtures as Fixture[],
+    manualBonuses
+  ).map(({ player, id, updated_at, ...standing }) => ({
+    ...standing,
+    updated_at: new Date().toISOString()
+  }));
 
   if (standings.length === 0) return;
 

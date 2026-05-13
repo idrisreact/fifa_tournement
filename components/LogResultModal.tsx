@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { AlertTriangle, X } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { X } from "lucide-react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { logResultAction } from "@/app/actions";
+import { useActionMutation } from "@/lib/hooks/use-action-mutation";
+import { logResultFormSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import type { Fixture, Player } from "@/types";
@@ -15,32 +20,59 @@ type Props = {
   disabled?: boolean;
 };
 
+type FormValues = z.infer<typeof logResultFormSchema>;
+
 export function LogResultModal({ fixture, players, children, disabled }: Props) {
-  const [rageQuit, setRageQuit] = useState(false);
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [screenshot, setScreenshot] = useState<File | null>(null);
   const home = players.find((player) => player.id === fixture.home_player_id);
   const away = players.find((player) => player.id === fixture.away_player_id);
 
-  const handleSubmit = (formData: FormData) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await logResultAction(formData);
-        setOpen(false);
-      } catch (cause) {
-        const message =
-          cause instanceof Error
-            ? cause.message
-            : "Something went wrong logging the result. Please try again.";
-        setError(message);
-      }
-    });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(logResultFormSchema),
+    defaultValues: {
+      homeScore: 0,
+      awayScore: 0,
+      rageQuit: false,
+      rageQuitPlayerId: "",
+      comebackWin: false
+    }
+  });
+
+  const rageQuit = form.watch("rageQuit");
+
+  const mutation = useActionMutation(logResultAction, {
+    successMessage: "Result logged",
+    onSuccess: () => {
+      setOpen(false);
+      form.reset();
+      setScreenshot(null);
+    }
+  });
+
+  const onSubmit = form.handleSubmit((values) => {
+    const formData = new FormData();
+    formData.append("fixture_id", fixture.id);
+    formData.append("home_score", String(values.homeScore));
+    formData.append("away_score", String(values.awayScore));
+    if (values.rageQuit && values.rageQuitPlayerId) {
+      formData.append("rage_quit_player_id", values.rageQuitPlayerId);
+    }
+    if (values.comebackWin) formData.append("comeback_win", "on");
+    if (screenshot) formData.append("screenshot", screenshot);
+    mutation.mutate(formData);
+  });
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      form.reset();
+      setScreenshot(null);
+    }
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild disabled={disabled}>
         {children}
       </Dialog.Trigger>
@@ -63,16 +95,33 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
             </Dialog.Close>
           </div>
 
-          <form action={handleSubmit} className="space-y-4">
-            <input type="hidden" name="fixture_id" value={fixture.id} />
+          <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor={`home-score-${fixture.id}`}>{home?.name} score</Label>
-                <Input id={`home-score-${fixture.id}`} name="home_score" type="number" min="0" required />
+                <Input
+                  id={`home-score-${fixture.id}`}
+                  type="number"
+                  min="0"
+                  aria-invalid={!!form.formState.errors.homeScore}
+                  {...form.register("homeScore", { valueAsNumber: true })}
+                />
+                {form.formState.errors.homeScore ? (
+                  <p className="mt-1 text-xs text-red-300">{form.formState.errors.homeScore.message}</p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor={`away-score-${fixture.id}`}>{away?.name} score</Label>
-                <Input id={`away-score-${fixture.id}`} name="away_score" type="number" min="0" required />
+                <Input
+                  id={`away-score-${fixture.id}`}
+                  type="number"
+                  min="0"
+                  aria-invalid={!!form.formState.errors.awayScore}
+                  {...form.register("awayScore", { valueAsNumber: true })}
+                />
+                {form.formState.errors.awayScore ? (
+                  <p className="mt-1 text-xs text-red-300">{form.formState.errors.awayScore.message}</p>
+                ) : null}
               </div>
             </div>
 
@@ -80,8 +129,7 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
               <input
                 type="checkbox"
                 className="h-4 w-4 accent-pitch"
-                checked={rageQuit}
-                onChange={(event) => setRageQuit(event.currentTarget.checked)}
+                {...form.register("rageQuit")}
               />
               Was this a rage quit?
             </label>
@@ -89,37 +137,47 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
             {rageQuit ? (
               <div>
                 <Label htmlFor={`rage-${fixture.id}`}>Player who rage quit</Label>
-                <Select id={`rage-${fixture.id}`} name="rage_quit_player_id" required>
+                <Select
+                  id={`rage-${fixture.id}`}
+                  aria-invalid={!!form.formState.errors.rageQuitPlayerId}
+                  {...form.register("rageQuitPlayerId", {
+                    required: rageQuit ? "Pick which player rage quit." : false
+                  })}
+                >
                   <option value="">Select player</option>
                   <option value={fixture.home_player_id}>{home?.name}</option>
                   <option value={fixture.away_player_id}>{away?.name}</option>
                 </Select>
+                {form.formState.errors.rageQuitPlayerId ? (
+                  <p className="mt-1 text-xs text-red-300">
+                    {form.formState.errors.rageQuitPlayerId.message}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
             <label className="flex items-center gap-3 rounded-md border border-white/10 bg-white/[0.04] p-3 text-sm text-white">
-              <input name="comeback_win" type="checkbox" className="h-4 w-4 accent-pitch" />
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-pitch"
+                {...form.register("comebackWin")}
+              />
               Comeback win? Winner was 2+ goals down
             </label>
 
             <div>
               <Label htmlFor={`screenshot-${fixture.id}`}>Screenshot upload</Label>
-              <Input id={`screenshot-${fixture.id}`} name="screenshot" type="file" accept="image/*" />
+              <Input
+                id={`screenshot-${fixture.id}`}
+                type="file"
+                accept="image/*"
+                onChange={(event) => setScreenshot(event.currentTarget.files?.[0] ?? null)}
+              />
               <p className="mt-1 text-xs text-muted">Phone photos work — anything under 10 MB is fine.</p>
             </div>
 
-            {error ? (
-              <p
-                role="alert"
-                className="inline-flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"
-              >
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </p>
-            ) : null}
-
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Submitting…" : "Submit Result"}
+            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              {mutation.isPending ? "Submitting…" : "Submit Result"}
             </Button>
           </form>
         </Dialog.Content>

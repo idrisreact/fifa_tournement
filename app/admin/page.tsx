@@ -1,8 +1,7 @@
-import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Shield, Trophy, Users } from "lucide-react";
+import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Trophy, Users } from "lucide-react";
 import {
   clearSubmissionsAction,
   logResultAction,
-  manualPointsAction,
   releasePlayerLinkAction,
   resetFixtureAction,
   signInWithGoogle,
@@ -12,9 +11,11 @@ import {
 } from "@/app/actions";
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
+import { AdminActionForm } from "@/components/AdminActionForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
+import { ManualPointsForm } from "@/components/ManualPointsForm";
 import { PageHeader } from "@/components/PageHeader";
 
 export default async function AdminPage() {
@@ -97,7 +98,11 @@ export default async function AdminPage() {
             <CardTitle>Season Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={updateSeasonStatusAction} className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <AdminActionForm
+              action={updateSeasonStatusAction}
+              successMessage="Season status updated"
+              className="grid gap-3 sm:grid-cols-[1fr_auto]"
+            >
               <input type="hidden" name="season_id" value={season.id} />
               <Select name="status" defaultValue={season.status} disabled={usingDemoData}>
                 <option value="setup">Setup</option>
@@ -108,7 +113,7 @@ export default async function AdminPage() {
                 <Trophy className="h-4 w-4" />
                 Update
               </Button>
-            </form>
+            </AdminActionForm>
           </CardContent>
         </Card>
 
@@ -117,7 +122,11 @@ export default async function AdminPage() {
             <CardTitle>Squad Size</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={updateSeasonMaxPlayersAction} className="space-y-3">
+            <AdminActionForm
+              action={updateSeasonMaxPlayersAction}
+              successMessage="Squad size updated"
+              className="space-y-3"
+            >
               <input type="hidden" name="season_id" value={season.id} />
               <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                 <div>
@@ -142,7 +151,7 @@ export default async function AdminPage() {
                   ? "Fixtures have been generated. Reset fixtures before changing squad size."
                   : `Currently ${players.length} of ${season.max_players} slots filled. Generating ${season.max_players} players produces ${season.max_players * (season.max_players - 1)} fixtures.`}
               </p>
-            </form>
+            </AdminActionForm>
           </CardContent>
         </Card>
 
@@ -151,33 +160,11 @@ export default async function AdminPage() {
             <CardTitle>Manual Points</CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={manualPointsAction} className="space-y-3">
-              <input type="hidden" name="season_id" value={season.id} />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Player</Label>
-                  <Select name="player_id" disabled={usingDemoData}>
-                    {standings.map((standing) => (
-                      <option key={standing.player_id} value={standing.player_id}>
-                        {standing.player?.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label>Points</Label>
-                  <Input name="points" type="number" defaultValue="1" disabled={usingDemoData} />
-                </div>
-              </div>
-              <div>
-                <Label>Reason note</Label>
-                <Textarea name="reason" placeholder="Admin correction note" disabled={usingDemoData} />
-              </div>
-              <Button type="submit" disabled={usingDemoData}>
-                <Shield className="h-4 w-4" />
-                Apply Adjustment
-              </Button>
-            </form>
+            <ManualPointsForm
+              seasonId={season.id}
+              standings={standings}
+              disabled={usingDemoData}
+            />
           </CardContent>
         </Card>
       </div>
@@ -214,13 +201,16 @@ export default async function AdminPage() {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <form action={clearSubmissionsAction}>
+                  <AdminActionForm
+                    action={clearSubmissionsAction}
+                    successMessage="Submissions cleared"
+                  >
                     <input type="hidden" name="fixture_id" value={fixture.id} />
                     <Button type="submit" variant="secondary" size="sm">
                       <RotateCcw className="h-4 w-4" />
                       Clear & let players resubmit
                     </Button>
-                  </form>
+                  </AdminActionForm>
                   <p className="text-xs text-muted">
                     Or scroll to <strong>Override Result</strong> below to set the final score yourself.
                   </p>
@@ -238,9 +228,10 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             {linkedPlayers.map((player) => (
-              <form
+              <AdminActionForm
                 key={player.id}
                 action={releasePlayerLinkAction}
+                successMessage="Account unlinked"
                 className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-[#0b1420] p-3"
               >
                 <input type="hidden" name="player_id" value={player.id} />
@@ -252,7 +243,7 @@ export default async function AdminPage() {
                   <Link2Off className="h-4 w-4" />
                   Unlink
                 </Button>
-              </form>
+              </AdminActionForm>
             ))}
           </CardContent>
         </Card>
@@ -265,9 +256,10 @@ export default async function AdminPage() {
         <CardContent>
           <div className="grid gap-4 xl:grid-cols-2">
             {fixtures.slice(0, 24).map((fixture) => (
-              <form
+              <AdminActionForm
                 key={fixture.id}
                 action={logResultAction}
+                successMessage="Result saved"
                 className="rounded-lg border border-white/10 bg-[#0b1420] p-4"
               >
                 <input type="hidden" name="fixture_id" value={fixture.id} />
@@ -311,7 +303,7 @@ export default async function AdminPage() {
                   />
                   Comeback win
                 </label>
-              </form>
+              </AdminActionForm>
             ))}
           </div>
         </CardContent>
@@ -324,9 +316,10 @@ export default async function AdminPage() {
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {playedFixtures.length ? (
             playedFixtures.map((fixture) => (
-              <form
+              <AdminActionForm
                 key={fixture.id}
                 action={resetFixtureAction}
+                successMessage="Fixture reset"
                 className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#0b1420] p-3"
               >
                 <input type="hidden" name="fixture_id" value={fixture.id} />
@@ -340,7 +333,7 @@ export default async function AdminPage() {
                   <RotateCcw className="h-4 w-4" />
                   Reset
                 </Button>
-              </form>
+              </AdminActionForm>
             ))
           ) : (
             <p className="text-sm text-muted">No played fixtures yet.</p>

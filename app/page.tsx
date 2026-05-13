@@ -20,7 +20,13 @@ export default async function DashboardPage() {
     getCurrentPlayer(),
     getCurrentUser()
   ]);
-  const played = fixtures.filter((fixture) => fixture.played);
+  const played = fixtures.filter(
+    (fixture) =>
+      fixture.played &&
+      !fixture.voided &&
+      fixture.home_score !== null &&
+      fixture.away_score !== null
+  );
   const totalGoals = played.reduce(
     (total, fixture) => total + (fixture.home_score ?? 0) + (fixture.away_score ?? 0),
     0

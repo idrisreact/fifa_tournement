@@ -80,7 +80,16 @@ export default async function PlayerProfilePage({ params }: Props) {
         />
         <StatCard label="Goal Difference" value={goalDifference(standing ?? { gf: 0, ga: 0 })} name="Goals" detail={`${standing?.gf ?? 0} for, ${standing?.ga ?? 0} against`} />
         <StatCard label="Predictions" value={exactPicks} name="Exact picks" detail={`${playerPredictions.length} total picks`} />
-        <StatCard label="Bonus Points" value={standing?.bonus_pts ?? 0} name="Extras" detail={`${standing?.comeback_wins ?? 0} comebacks`} />
+        <StatCard
+          label="Bonus Points"
+          value={standing?.bonus_pts ?? 0}
+          name="Extras"
+          detail={
+            standing?.manual_bonus_pts
+              ? `${standing.comeback_wins ?? 0} comebacks · ${standing.manual_bonus_pts > 0 ? "+" : ""}${standing.manual_bonus_pts} admin`
+              : `${standing?.comeback_wins ?? 0} comebacks`
+          }
+        />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
