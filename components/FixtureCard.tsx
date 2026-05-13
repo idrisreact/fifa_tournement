@@ -31,7 +31,7 @@ type ScoreSlotProps = {
 function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlotProps) {
   if (fixture.played) {
     return (
-      <div className="font-display text-3xl leading-none text-white sm:text-4xl">
+      <div className="font-display text-4xl leading-none text-white">
         {fixture.home_score} - {fixture.away_score}
       </div>
     );
@@ -76,7 +76,7 @@ function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlot
   if (role && theirSubmittedAt) {
     return (
       <SubmitResultModal fixture={fixture} players={players}>
-        <Button size="sm" variant="gold">
+        <Button size="sm" variant="gold" className="w-full sm:w-auto">
           Confirm Score
         </Button>
       </SubmitResultModal>
@@ -86,7 +86,7 @@ function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlot
   if (role) {
     return (
       <SubmitResultModal fixture={fixture} players={players}>
-        <Button size="sm" variant="secondary">
+        <Button size="sm" variant="secondary" className="w-full sm:w-auto">
           Submit Result
         </Button>
       </SubmitResultModal>
@@ -96,7 +96,7 @@ function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlot
   if (isAdmin) {
     return (
       <LogResultModal fixture={fixture} players={players} disabled={usingDemoData}>
-        <Button size="sm" variant="secondary">
+        <Button size="sm" variant="secondary" className="w-full sm:w-auto">
           Log Result
         </Button>
       </LogResultModal>
@@ -134,7 +134,7 @@ export function FixtureCard({
         <Badge>MD {fixture.matchday}</Badge>
         <Badge variant={fixture.leg === 1 ? "green" : "gold"}>Leg {fixture.leg}</Badge>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
         <div className="flex min-w-0 items-center gap-3">
           <AvatarCircle player={home} size="sm" />
           <div className="min-w-0">
@@ -147,10 +147,11 @@ export function FixtureCard({
             {!compact ? <p className="truncate text-xs text-muted">@{home.psn_tag}</p> : null}
           </div>
         </div>
-        <div className="min-w-20 text-center sm:min-w-24">
+        <div className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-3 text-center sm:min-w-28 sm:border-0 sm:bg-transparent sm:p-0">
           <ScoreSlot fixture={fixture} players={players} isAdmin={!!isAdmin} usingDemoData={usingDemoData} role={role} />
         </div>
-        <div className="flex min-w-0 items-center justify-end gap-3 text-right">
+        <div className="flex min-w-0 items-center gap-3 sm:justify-end sm:text-right">
+          <AvatarCircle player={away} size="sm" className="sm:hidden" />
           <div className="min-w-0">
             <Link
               href={`/players/${away.id}`}
@@ -160,7 +161,7 @@ export function FixtureCard({
             </Link>
             {!compact ? <p className="truncate text-xs text-muted">@{away.psn_tag}</p> : null}
           </div>
-          <AvatarCircle player={away} size="sm" />
+          <AvatarCircle player={away} size="sm" className="hidden sm:grid" />
         </div>
       </div>
       {fixture.played && (fixture.rage_quit_player_id || fixture.comeback_win || fixture.result_screenshot_url) ? (
