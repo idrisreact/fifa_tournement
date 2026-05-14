@@ -75,6 +75,7 @@ create table if not exists standings (
   pts integer default 0,
   bonus_pts integer default 0,
   manual_bonus_pts integer default 0,
+  inactivity_penalty_pts integer default 0,
   blowout_wins integer default 0,
   comeback_wins integer default 0,
   rage_quits integer default 0,
@@ -83,6 +84,7 @@ create table if not exists standings (
 );
 
 alter table standings add column if not exists manual_bonus_pts integer default 0;
+alter table standings add column if not exists inactivity_penalty_pts integer default 0;
 
 create table if not exists fixture_comments (
   id uuid primary key default gen_random_uuid(),

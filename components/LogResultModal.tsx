@@ -27,22 +27,32 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const home = players.find((player) => player.id === fixture.home_player_id);
   const away = players.find((player) => player.id === fixture.away_player_id);
+  const hasPlayerSubmission = !!fixture.home_submitted_at || !!fixture.away_submitted_at;
+  const isOverride = fixture.played || fixture.dispute_open || hasPlayerSubmission || fixture.voided;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(logResultFormSchema),
     defaultValues: {
-      homeScore: 0,
-      awayScore: 0,
-      rageQuit: false,
-      rageQuitPlayerId: "",
-      comebackWin: false
+      homeScore:
+        fixture.home_score ??
+        fixture.home_submitted_home_score ??
+        fixture.away_submitted_home_score ??
+        0,
+      awayScore:
+        fixture.away_score ??
+        fixture.home_submitted_away_score ??
+        fixture.away_submitted_away_score ??
+        0,
+      rageQuit: !!fixture.rage_quit_player_id,
+      rageQuitPlayerId: fixture.rage_quit_player_id ?? "",
+      comebackWin: fixture.comeback_win
     }
   });
 
   const rageQuit = form.watch("rageQuit");
 
   const mutation = useActionMutation(logResultAction, {
-    successMessage: "Result logged",
+    successMessage: isOverride ? "Result overridden" : "Result logged",
     onSuccess: () => {
       setOpen(false);
       form.reset();
@@ -82,7 +92,7 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <Dialog.Title className="font-display text-4xl uppercase leading-none text-white">
-                Log Result
+                {isOverride ? "Override Result" : "Log Result"}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted">
                 Matchday {fixture.matchday}: {home?.name} vs {away?.name}
@@ -96,6 +106,12 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            {isOverride ? (
+              <p className="rounded-md border border-gold/30 bg-gold/10 p-3 text-sm text-gold">
+                Admin override will set this as the final result and clear any waiting confirmations or disputes.
+              </p>
+            ) : null}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor={`home-score-${fixture.id}`}>{home?.name} score</Label>
@@ -177,7 +193,7 @@ export function LogResultModal({ fixture, players, children, disabled }: Props) 
             </div>
 
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Submitting…" : "Submit Result"}
+              {mutation.isPending ? "Submitting…" : isOverride ? "Override Final Result" : "Submit Result"}
             </Button>
           </form>
         </Dialog.Content>

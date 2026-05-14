@@ -2,11 +2,17 @@ import type { Fixture, Player, Standing } from "@/types";
 import { fixtureLoserId, fixtureWinnerId, playedScore, scoreMargin } from "@/lib/fixtures";
 import { goalDifference } from "@/lib/utils";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const INACTIVITY_GRACE_DAYS = 3;
+export const INACTIVITY_PENALTY_POINTS = 3;
+
 export function calculateStandings(
   seasonId: string,
   players: Player[],
   fixtures: Fixture[],
-  manualBonuses?: Map<string, number>
+  manualBonuses?: Map<string, number>,
+  now = new Date(),
+  inactivityStartedAt?: string | Date | null
 ): Standing[] {
   const playedFixtures = fixtures.filter(
     (fixture) =>
@@ -31,6 +37,7 @@ export function calculateStandings(
       pts: 0,
       bonus_pts: 0,
       manual_bonus_pts: 0,
+      inactivity_penalty_pts: 0,
       blowout_wins: 0,
       comeback_wins: 0,
       rage_quits: 0,
@@ -104,7 +111,70 @@ export function calculateStandings(
     }
   }
 
+  for (const standing of rows.values()) {
+    const penalty = getInactivityPenalty(fixtures, standing.player_id, now, inactivityStartedAt);
+    standing.inactivity_penalty_pts = penalty;
+    standing.pts -= penalty;
+  }
+
   return sortStandings([...rows.values()], playedFixtures);
+}
+
+export function getPlayerLastPlayedAt(fixtures: Fixture[], playerId: string) {
+  const lastPlayedTime = fixtures.reduce((latest, fixture) => {
+    if (
+      !fixture.played ||
+      fixture.voided ||
+      fixture.played_at === null ||
+      (fixture.home_player_id !== playerId && fixture.away_player_id !== playerId)
+    ) {
+      return latest;
+    }
+
+    const playedTime = new Date(fixture.played_at).getTime();
+    return Number.isNaN(playedTime) ? latest : Math.max(latest, playedTime);
+  }, 0);
+
+  return lastPlayedTime > 0 ? new Date(lastPlayedTime) : null;
+}
+
+function toValidDate(value?: string | Date | null) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function getPlayerActivityClockStartedAt(
+  fixtures: Fixture[],
+  playerId: string,
+  inactivityStartedAt?: string | Date | null
+) {
+  return getPlayerLastPlayedAt(fixtures, playerId) ?? toValidDate(inactivityStartedAt);
+}
+
+export function getDaysSinceLastPlayed(
+  fixtures: Fixture[],
+  playerId: string,
+  now = new Date(),
+  inactivityStartedAt?: string | Date | null
+) {
+  const lastPlayedAt = getPlayerActivityClockStartedAt(fixtures, playerId, inactivityStartedAt);
+  if (!lastPlayedAt) return null;
+
+  const days = Math.floor((now.getTime() - lastPlayedAt.getTime()) / DAY_MS);
+  return Math.max(days, 0);
+}
+
+export function getInactivityPenalty(
+  fixtures: Fixture[],
+  playerId: string,
+  now = new Date(),
+  inactivityStartedAt?: string | Date | null
+) {
+  const daysSinceLastPlayed = getDaysSinceLastPlayed(fixtures, playerId, now, inactivityStartedAt);
+  return daysSinceLastPlayed !== null && daysSinceLastPlayed >= INACTIVITY_GRACE_DAYS
+    ? INACTIVITY_PENALTY_POINTS
+    : 0;
 }
 
 function awardDoubleLegBonuses(rows: Map<string, Standing>, fixtures: Fixture[]) {

@@ -29,6 +29,30 @@ type ScoreSlotProps = {
 };
 
 function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlotProps) {
+  if (isAdmin) {
+    const isOverride =
+      fixture.played ||
+      fixture.voided ||
+      fixture.dispute_open ||
+      !!fixture.home_submitted_at ||
+      !!fixture.away_submitted_at;
+
+    return (
+      <div className="space-y-2">
+        {fixture.played ? (
+          <div className="font-display text-4xl leading-none text-white">
+            {fixture.home_score} - {fixture.away_score}
+          </div>
+        ) : null}
+        <LogResultModal fixture={fixture} players={players} disabled={usingDemoData}>
+          <Button size="sm" variant={isOverride ? "gold" : "secondary"} className="w-full sm:w-auto">
+            {isOverride ? "Override" : "Log Result"}
+          </Button>
+        </LogResultModal>
+      </div>
+    );
+  }
+
   if (fixture.played) {
     return (
       <div className="font-display text-4xl leading-none text-white">
@@ -90,16 +114,6 @@ function ScoreSlot({ fixture, players, isAdmin, usingDemoData, role }: ScoreSlot
           Submit Result
         </Button>
       </SubmitResultModal>
-    );
-  }
-
-  if (isAdmin) {
-    return (
-      <LogResultModal fixture={fixture} players={players} disabled={usingDemoData}>
-        <Button size="sm" variant="secondary" className="w-full sm:w-auto">
-          Log Result
-        </Button>
-      </LogResultModal>
     );
   }
 
