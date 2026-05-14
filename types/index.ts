@@ -90,6 +90,7 @@ export type Standing = {
   pts: number;
   bonus_pts: number;
   manual_bonus_pts: number;
+  inactivity_penalty_pts: number;
   blowout_wins: number;
   comeback_wins: number;
   rage_quits: number;

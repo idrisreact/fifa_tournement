@@ -1,7 +1,6 @@
-import { AlertTriangle, Link2Off, LogOut, RotateCcw, Save, Trophy, Users } from "lucide-react";
+import { AlertTriangle, Link2Off, LogOut, RotateCcw, Trophy, Users } from "lucide-react";
 import {
   clearSubmissionsAction,
-  logResultAction,
   releasePlayerLinkAction,
   resetFixtureAction,
   signInWithGoogle,
@@ -12,6 +11,7 @@ import {
 import { getCurrentUser, isAdminUser } from "@/lib/auth";
 import { getTournamentData } from "@/lib/data";
 import { AdminActionForm } from "@/components/AdminActionForm";
+import { AdminOverrideResults } from "@/components/AdminOverrideResults";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -249,65 +249,7 @@ export default async function AdminPage() {
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Override Result</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {fixtures.slice(0, 24).map((fixture) => (
-              <AdminActionForm
-                key={fixture.id}
-                action={logResultAction}
-                successMessage="Result saved"
-                className="rounded-lg border border-white/10 bg-[#0b1420] p-4"
-              >
-                <input type="hidden" name="fixture_id" value={fixture.id} />
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="font-label text-lg uppercase text-white">
-                    MD {fixture.matchday}: {fixture.home_player?.name} vs {fixture.away_player?.name}
-                  </p>
-                  <span className="text-xs text-muted">Leg {fixture.leg}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div>
-                    <Label>Home</Label>
-                    <Input name="home_score" type="number" min="0" defaultValue={fixture.home_score ?? 0} disabled={usingDemoData} />
-                  </div>
-                  <div>
-                    <Label>Away</Label>
-                    <Input name="away_score" type="number" min="0" defaultValue={fixture.away_score ?? 0} disabled={usingDemoData} />
-                  </div>
-                  <div>
-                    <Label>Rage Quit</Label>
-                    <Select name="rage_quit_player_id" defaultValue={fixture.rage_quit_player_id ?? ""} disabled={usingDemoData}>
-                      <option value="">None</option>
-                      <option value={fixture.home_player_id}>{fixture.home_player?.name}</option>
-                      <option value={fixture.away_player_id}>{fixture.away_player?.name}</option>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="submit" className="w-full" disabled={usingDemoData}>
-                      <Save className="h-4 w-4" />
-                      Save
-                    </Button>
-                  </div>
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-sm text-muted">
-                  <input
-                    name="comeback_win"
-                    type="checkbox"
-                    defaultChecked={fixture.comeback_win}
-                    className="h-4 w-4 accent-pitch"
-                    disabled={usingDemoData}
-                  />
-                  Comeback win
-                </label>
-              </AdminActionForm>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <AdminOverrideResults fixtures={fixtures} players={players} usingDemoData={usingDemoData} />
 
       <Card>
         <CardHeader>

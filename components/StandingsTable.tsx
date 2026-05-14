@@ -90,6 +90,14 @@ export function StandingsTable({ standings, fixtures, limit }: Props) {
                       {standing.manual_bonus_pts}
                     </span>
                   ) : null}
+                  {standing.inactivity_penalty_pts ? (
+                    <span
+                      title={`Inactivity penalty: -${standing.inactivity_penalty_pts}`}
+                      className="ml-1 inline-flex items-center rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-200"
+                    >
+                      -{standing.inactivity_penalty_pts}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="hidden px-3 py-3 md:table-cell">
                   <div className="flex justify-center gap-1">

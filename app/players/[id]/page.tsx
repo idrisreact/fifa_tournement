@@ -11,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentPlayer, isAdminUser } from "@/lib/auth";
 import { awardsByKind, awardsForPlayer, computeAwards } from "@/lib/badges";
 import { getTournamentData } from "@/lib/data";
-import { sortStandings } from "@/lib/standings";
+import {
+  getDaysSinceLastPlayed,
+  getPlayerActivityClockStartedAt,
+  getPlayerLastPlayedAt,
+  sortStandings
+} from "@/lib/standings";
 import { formatRecord, goalDifference } from "@/lib/utils";
 
 type Props = {
@@ -20,7 +25,7 @@ type Props = {
 
 export default async function PlayerProfilePage({ params }: Props) {
   const [
-    { players, fixtures, standings, comments, reactions, predictions, usingDemoData },
+    { season, players, fixtures, standings, comments, reactions, predictions, usingDemoData },
     currentPlayer,
     isAdmin
   ] = await Promise.all([getTournamentData(), getCurrentPlayer(), isAdminUser()]);
@@ -53,6 +58,28 @@ export default async function PlayerProfilePage({ params }: Props) {
   const awards = computeAwards({ players, fixtures, standings: sortedStandings });
   const playerAwards = awardsForPlayer(awards, player.id);
   const { honour: honourBadges, shame: shameBadges } = awardsByKind(playerAwards);
+  const lastPlayedAt = getPlayerLastPlayedAt(fixtures, player.id);
+  const activityClockStartedAt = getPlayerActivityClockStartedAt(fixtures, player.id, season.created_at);
+  const daysSinceLastPlayed = getDaysSinceLastPlayed(fixtures, player.id, new Date(), season.created_at);
+  const lastPlayedDetail = lastPlayedAt
+    ? `Last played ${lastPlayedAt.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      })}`
+    : activityClockStartedAt
+      ? `League started ${activityClockStartedAt.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        })}`
+      : "No completed matches yet";
+  const lastPlayedSummary =
+    daysSinceLastPlayed === null
+      ? "No completed matches yet"
+      : lastPlayedAt
+        ? `${daysSinceLastPlayed} ${daysSinceLastPlayed === 1 ? "day" : "days"} since last played`
+        : `${daysSinceLastPlayed} ${daysSinceLastPlayed === 1 ? "day" : "days"} since league started`;
 
   return (
     <div className="space-y-6">
@@ -66,11 +93,11 @@ export default async function PlayerProfilePage({ params }: Props) {
       <PageHeader
         eyebrow="Player profile"
         title={player.name}
-        description={`@${player.psn_tag}`}
+        description={`@${player.psn_tag} · ${lastPlayedSummary}`}
         action={<AvatarCircle player={player} />}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard label="Position" value={position ? `#${position}` : "-"} name="Table" detail={`${standing?.pts ?? 0} points`} />
         <StatCard
           label="Record"
@@ -79,6 +106,16 @@ export default async function PlayerProfilePage({ params }: Props) {
           detail={`${standing?.mp ?? 0} played`}
         />
         <StatCard label="Goal Difference" value={goalDifference(standing ?? { gf: 0, ga: 0 })} name="Goals" detail={`${standing?.gf ?? 0} for, ${standing?.ga ?? 0} against`} />
+        <StatCard
+          label="Last Played"
+          value={daysSinceLastPlayed ?? "-"}
+          name="Since last match"
+          detail={
+            standing?.inactivity_penalty_pts
+              ? `${lastPlayedDetail} · -${standing.inactivity_penalty_pts} pts`
+              : lastPlayedDetail
+          }
+        />
         <StatCard label="Predictions" value={exactPicks} name="Exact picks" detail={`${playerPredictions.length} total picks`} />
         <StatCard
           label="Bonus Points"

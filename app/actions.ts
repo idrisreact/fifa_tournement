@@ -232,7 +232,7 @@ export async function logResultAction(formData: FormData) {
 
   if (fixtureError) throw new Error(fixtureError.message);
 
-  let screenshotUrl: string | null = null;
+  let screenshotUrl: string | null = fixture.result_screenshot_url;
   const screenshot = formData.get("screenshot");
   if (screenshot instanceof File && screenshot.size > 0) {
     const extension = screenshot.name.split(".").pop() ?? "png";
@@ -261,7 +261,16 @@ export async function logResultAction(formData: FormData) {
       rage_quit_player_id: parsed.rageQuitPlayerId,
       comeback_win: parsed.comebackWin,
       result_screenshot_url: screenshotUrl,
-      played_at: new Date().toISOString()
+      played_at: new Date().toISOString(),
+      home_submitted_home_score: null,
+      home_submitted_away_score: null,
+      home_submitted_at: null,
+      away_submitted_home_score: null,
+      away_submitted_away_score: null,
+      away_submitted_at: null,
+      dispute_open: false,
+      dispute_reason: null,
+      voided: false
     })
     .eq("id", parsed.fixtureId);
 
@@ -735,10 +744,12 @@ export async function upsertPredictionAction(formData: FormData) {
 export async function recalculateStandings(seasonId: string) {
   const supabase = requireAdminClient();
   const [
+    { data: season, error: seasonError },
     { data: players, error: playersError },
     { data: fixtures, error: fixturesError },
     { data: existingStandings, error: existingError }
   ] = await Promise.all([
+    supabase.from("seasons").select("created_at").eq("id", seasonId).single(),
     supabase.from("players").select("*"),
     supabase.from("fixtures").select("*").eq("season_id", seasonId),
     supabase
@@ -747,6 +758,7 @@ export async function recalculateStandings(seasonId: string) {
       .eq("season_id", seasonId)
   ]);
 
+  if (seasonError) throw new Error(seasonError.message);
   if (playersError) throw new Error(playersError.message);
   if (fixturesError) throw new Error(fixturesError.message);
   if (existingError) throw new Error(existingError.message);
@@ -759,7 +771,9 @@ export async function recalculateStandings(seasonId: string) {
     seasonId,
     players as Player[],
     fixtures as Fixture[],
-    manualBonuses
+    manualBonuses,
+    new Date(),
+    season.created_at
   ).map(({ player, id, updated_at, ...standing }) => ({
     ...standing,
     updated_at: new Date().toISOString()

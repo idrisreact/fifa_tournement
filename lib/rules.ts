@@ -38,6 +38,7 @@ export const rulesSections = [
     items: [
       "A rage quit is recorded as an automatic 0-3 loss.",
       "A second rage quit triggers a 3-point deduction.",
+      "Players inactive for 3 or more days lose 3 points; players with no matches are counted from league start.",
       "Results must be submitted within 30 minutes of full time."
     ]
   },

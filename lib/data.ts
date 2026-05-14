@@ -9,6 +9,7 @@ import type {
 } from "@/types";
 import { attachPlayers } from "@/lib/utils";
 import { createSupabaseAdminClient } from "@/lib/supabase";
+import { calculateStandings } from "@/lib/standings";
 
 const unconfiguredSeason: Season = {
   id: "unconfigured",
@@ -80,10 +81,20 @@ export async function getTournamentData(): Promise<TournamentData> {
   const players = playersResponse.data ?? [];
   const fixtures = attachPlayers((fixturesResponse.data ?? []) as Fixture[], players);
   const fixtureIds = fixtures.map((fixture) => fixture.id);
-  const standings = ((standingsResponse.data ?? []) as Standing[]).map((standing) => ({
-    ...standing,
-    player: players.find((player) => player.id === standing.player_id) ?? null
-  }));
+  const manualBonuses = new Map<string, number>(
+    ((standingsResponse.data ?? []) as Standing[]).map((standing) => [
+      standing.player_id,
+      standing.manual_bonus_pts ?? 0
+    ])
+  );
+  const standings = calculateStandings(
+    season.id,
+    players,
+    fixtures,
+    manualBonuses,
+    new Date(),
+    season.created_at
+  );
 
   let comments: FixtureComment[] = [];
   let reactions: FixtureReaction[] = [];
